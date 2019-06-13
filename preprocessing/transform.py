@@ -96,5 +96,5 @@ def transform_dir(dir_path, key='seg'):
 
 
 if __name__ == '__main__':
-    transform_dir('/home/pzq/ADE20K_2016_07_26/images/training/e')
+    transform_dir('/home/pzq/ADE20K_2016_07_26/images/training/l')
     # transform_annotation('/home/pzq/ADE20K_2016_07_26/images/training/a/abbey', 'ADE_train_00000970_seg.png')
