@@ -6,6 +6,7 @@ import numpy as np
 import json
 import os
 
+class_filter = set([0])
 
 def transform_annotation(dir_path, img_path):
     """
@@ -47,6 +48,8 @@ def search_object(seg_map):
         for w in range(W):
             if seg_map[h, w] == -1:
                 continue
+            if seg_map[h, w] in class_filter:
+                continue
             visiting_queue.append([h, w])
             left = right = w
             up = down = h
@@ -55,6 +58,8 @@ def search_object(seg_map):
                 if seg_map[cur_position[0], cur_position[1]] == -1:
                     continue
                 cur_obj = seg_map[cur_position[0], cur_position[1]]
+                if cur_obj in class_filter:
+                    continue
                 seg_map[cur_position[0], cur_position[1]] = -1
 
                 left = min(left, cur_position[1])
@@ -68,7 +73,7 @@ def search_object(seg_map):
                         if seg_map[new_position[0], new_position[1]] == cur_obj:
                             visiting_queue.append(new_position)
             sample_area = (right - left) * (down - up)
-            if sample_area >= area / 3 or sample_area <= max(10, area / 10000):
+            if sample_area >= area / 3 or sample_area <= min(100, area / 900):
                 continue
             if (right - left) / (down - up) < 10 and (right - left) / (down - up) > 1 / 10:
                 annotation_list.append({'obj': int(cur_obj), 'box': [left, right, up, down]})
@@ -96,5 +101,6 @@ def transform_dir(dir_path, key='seg'):
 
 
 if __name__ == '__main__':
-    transform_dir('/home/pzq/ADE20K_2016_07_26/images/training/e')
+    #transform_dir('/home/pzq/ADE20K_2016_07_26/images/training/e')
+    transform_dir('/Users/binah/cmu/ADE20K_2016_07_26/images/training/a/aquarium')
     # transform_annotation('/home/pzq/ADE20K_2016_07_26/images/training/a/abbey', 'ADE_train_00000970_seg.png')
