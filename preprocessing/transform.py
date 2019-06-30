@@ -6,7 +6,7 @@ import numpy as np
 import json
 import os
 
-class_filter = set([0])
+class_filter = json.load(open('../utils/filterl2.json'))
 
 def transform_annotation(dir_path, img_path):
     """
