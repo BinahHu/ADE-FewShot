@@ -20,7 +20,7 @@ def transform_annotation(dir_path, img_path):
     img = cv2.imread(img_path)
     print(img_path)
     img = np.transpose(img, (2, 0, 1)).astype(np.int)
-    [R, G, _] = img
+    [_, G, R] = img
     seg_maps = ((R/10 * 256) + G).astype(np.int)
     annotation = search_object(seg_maps)
     json_path = os.path.join(dir_path, img_path[:-8] + '.json')

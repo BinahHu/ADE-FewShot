@@ -1,2 +1,4 @@
 /.idea/
 .idea/workplace.xml
+utils/*
+!/utils/filterl2.json
