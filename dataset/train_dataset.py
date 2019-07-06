@@ -8,6 +8,9 @@ import numpy as np
 
 
 class ImgTrainDataset(BaseTrainDataset):
+    """
+    Form a batch with original images
+    """
     def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
         super(ImgTrainDataset, self).__init__(odgt, opt, **kwargs)
         self.root_dataset = opt.root_dataset
@@ -43,6 +46,7 @@ class ImgTrainDataset(BaseTrainDataset):
                 self.cur_idx = 0
                 np.random.shuffle(self.list_sample)
 
+            # if there are enough batch candidates already
             flag = 0
             for i, record_list in enumerate(self.batch_record_list):
                 if len(record_list) == self.batch_per_gpu:
@@ -87,12 +91,11 @@ class ImgTrainDataset(BaseTrainDataset):
         batch_resized_height = int(self.round2nearest_multiple(batch_resized_height, self.padding_constant))
         batch_resized_width = int(self.round2nearest_multiple(batch_resized_width, self.padding_constant))
 
-        assert self.padding_constant >= self.segm_downsampling_rate,\
-                'padding constant must be equal or large than segm downsamping rate'
+        assert self.padding_constant >= self.segm_downsampling_rate, \
+            'padding constant must be equal or large than segm downsamping rate'
         batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resized_height, batch_resized_width)
-        batch_segms = torch.zeros(
-            self.batch_per_gpu, batch_resized_height // self.segm_downsampling_rate, \
-            batch_resized_width // self.segm_downsampling_rate).long()
+        batch_segms = torch.zeros(self.batch_per_gpu, batch_resized_height // self.segm_downsampling_rate,
+                                  batch_resized_width // self.segm_downsampling_rate).long()
 
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
@@ -117,8 +120,10 @@ class ImgTrainDataset(BaseTrainDataset):
                     segm = cv2.flip(segm, 1)
 
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_LINEAR)
-            segm = cv2.resize(segm, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_NEAREST)
+            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]),
+                             interpolation=cv2.INTER_LINEAR)
+            segm = cv2.resize(segm, (batch_resized_size[i, 1], batch_resized_size[i, 0]),
+                              interpolation=cv2.INTER_NEAREST)
 
             # to avoid seg label misalignment
             segm_rounded_height = self.round2nearest_multiple(segm.shape[0], self.segm_downsampling_rate)
@@ -128,8 +133,8 @@ class ImgTrainDataset(BaseTrainDataset):
 
             segm = cv2.resize(
                 segm_rounded,
-                (segm_rounded.shape[1] // self.segm_downsampling_rate, \
-                 segm_rounded.shape[0] // self.segm_downsampling_rate), \
+                (segm_rounded.shape[1] // self.segm_downsampling_rate,
+                 segm_rounded.shape[0] // self.segm_downsampling_rate),
                 interpolation=cv2.INTER_NEAREST)
             segm[:, :, 0] = segm[:, :, 1].astype(np.int) + ((segm[:, :, 2] / 10) * 256).astype(np.int)
             segm = segm[:, :, 0]
@@ -152,6 +157,9 @@ class ImgTrainDataset(BaseTrainDataset):
 
 
 class ObjTrainDataset(BaseTrainDataset):
+    """
+    Form batch at object level
+    """
     def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
         super(ObjTrainDataset, self).__init__(odgt, opt, **kwargs)
         self.root_dataset = opt.root_dataset
@@ -256,11 +264,11 @@ class ObjTrainDataset(BaseTrainDataset):
             img = self.img_transform(img)
 
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
-            batch_labels[i] = this_record['label']
+            batch_labels[i] = this_record['cls_label']
 
         output = dict()
         output['img_data'] = batch_images
-        output['labels'] = batch_labels
+        output['cls_label'] = batch_labels
         return output
 
     def __len__(self):
