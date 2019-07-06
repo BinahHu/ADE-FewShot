@@ -55,13 +55,13 @@ class LearningModule(LearningModuleBase):
         self.crit = crit
 
     def forward(self, feed_dict, mode='train'):
-        feature_map = self.feature_extractor(feed_dict[0]['img_data'])
+        feature_map = self.feature_extractor(feed_dict['img_data'])
         acc = 0
         loss = 0
         for crit in self.crit:
             if crit['weight'] == 0:
                 continue
-            label = feed_dict[0]['{type}_label'.format(type=crit['type'])].long()
+            label = feed_dict['{type}_label'.format(type=crit['type'])].long()
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
 

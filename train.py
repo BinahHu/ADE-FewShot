@@ -93,6 +93,8 @@ def main(args):
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}}
     network = LearningModule(feature_extractor, crit, fc_classifier)
+    network = UserScatteredDataParallel(network, device_ids=args.gpus)
+
     for epoch in range(0, 4):
         train(network, iterator_train, optimizers, history, epoch, args)
     print('Training Done')
@@ -111,7 +113,7 @@ if __name__ == '__main__':
                         default='./data/small_test/')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default='0',
+    parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
@@ -154,9 +156,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     main(args)
-
-
-
-
-
-
