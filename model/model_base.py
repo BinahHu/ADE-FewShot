@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
 from model.tail_blocks import FC_Classifier
+from resnet import resnet18
 
 
 class ModelBuilder():
@@ -19,6 +20,8 @@ class ModelBuilder():
     def build_feature_extractor(self, arch='LeNet', weights=''):
         if arch == 'LeNet':
             feature_extractor = LeNet()
+        elif arch == 'resnet18':
+            feature_extractor = resnet18()
 
         feature_extractor.apply(self.weights_init)
         if len(weights) > 0:
@@ -28,7 +31,7 @@ class ModelBuilder():
         return feature_extractor
 
     def build_classification_layer(self, args):
-        classifier = FC_Classifier(120, 256, args.num_class)
+        classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
         classifier.apply(self.weights_init)
         return classifier
 
