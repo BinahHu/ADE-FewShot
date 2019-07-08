@@ -70,7 +70,8 @@ class ImgTrainDataset(BaseTrainDataset):
 
         # resize all images' short edges to the chosen size
         if isinstance(self.imgSize, list):
-            this_short_size = np.random.choice(self.imgSize)
+            if len(self.imgSize >= 1):
+                this_short_size = np.random.choice(self.imgSize)
         else:
             this_short_size = self.imgSize
 
