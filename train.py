@@ -2,6 +2,7 @@ import os
 import time
 import random
 import argparse
+import json
 
 import torch
 import torch.nn as nn
@@ -12,6 +13,7 @@ from dataset.dataloader import DataLoaderIter, DataLoader
 from utils import  AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
+from model.parallel.replicate import patch_replication_callback
 
 
 def train(module, iterator, optimizers, history, epoch, args):
@@ -65,13 +67,23 @@ def train(module, iterator, optimizers, history, epoch, args):
         # adjust_learning_rate(optimizers, cur_iter, args)
 
 
+def checkpoint(nets, history, args, epoch_num):
+    print('Saving checkpoints...')
+    suffix_latest = 'epoch_{}.pth'.format(epoch_num)
+
+    torch.save(history,
+               '{}/history_{}'.format(args.ckpt, suffix_latest))
+    torch.save(nets.state_dict(),
+               '{}/net_{}'.format(args.ckpt, suffix_latest))
+
+
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor()
+    feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
 
-    crit_cls = nn.NLLLoss(ignore_index=-1)
+    crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
@@ -94,9 +106,12 @@ def main(args):
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}}
     network = LearningModule(feature_extractor, crit, fc_classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
+    patch_replication_callback(network)
+    network.cuda()
 
-    for epoch in range(0, 4):
+    for epoch in range(0, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
+        checkpoint(network, history, args, epoch)
     print('Training Done')
 
 
@@ -105,37 +120,39 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
+    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--feat_dim', default=512)
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/small_test/train_objs.odgt')
+                        default='./data/ADE/ADE_Base/base_obj.odgt')
     parser.add_argument('--root_dataset',
-                        default='./data/small_test/')
+                        default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0],
+    parser.add_argument('--gpus', default=[0, 1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=4, type=int,
+    parser.add_argument('--num_epoch', default=20, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--epoch_iters', default=4, type=int,
+    parser.add_argument('--epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=2e-2, type=float, help='LR')
     parser.add_argument('--lr_cls', default=2e-2, type=float, help='LR')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=10, type=int,
+    parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=16, type=int,
                         help='number of data loading workers')
-    parser.add_argument('--imgSize', default=[100, 150, 200, 300],
+    parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
                         help='input image size of short edge (int or list)')
-    parser.add_argument('--imgMaxSize', default=1000, type=int,
+    parser.add_argument('--imgMaxSize', default=1500, type=int,
                         help='maximum input image size of long edge')
     parser.add_argument('--padding_constant', default=8, type=int,
                         help='maxmimum downsampling rate of the network')
@@ -146,7 +163,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./ckpt',
+    parser.add_argument('--ckpt', default='./checkpoint',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')

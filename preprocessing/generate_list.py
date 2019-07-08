@@ -37,17 +37,18 @@ def base_obj_list(args, base_set, base_list, img_path):
     """
     Generate object level base training dataset odgt
     """
-    result = ''
+    result = ""
 
     for obj in base_set:
         path = img_path[int(obj["img"])]
         category = base_list.index(int(obj["obj"]))
         box = obj["box"]
-        new_obj = {"fpath_img": path, "obj": category,
-                   "anchor": [[box[0], box[2]], [box[1], box[3]]]}
-        result += str(new_obj)
-        result += '\n'
 
+        result += ('{' + '\"fpath_img\": ' + '\"' + path + '\"' + ', ')
+        result += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+        result += ('\"' + 'cls_label' + '\": ' + str(category) + '}' + '\n')
+
+    result.replace("\'", '\"')
     output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj.odgt')
     f = open(output_path, 'w')
     f.write(result)
@@ -58,12 +59,12 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
     """
     Generate image level base train list
     """
-    result = ''
+    result = ""
 
     for img in data_img:
         path = img_path[int(img["img"])]
         seg_path = path[:-4] + "_seg.png"
-        annotation = img['annotation']
+        annotation = img["annotation"]
 
         new_annotate = []
         for i, box in enumerate(annotation):
@@ -79,8 +80,8 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
         new_img["fpath_segm"] = seg_path
         new_img["annotation"] = new_annotate
         result += str(new_img)
-        result += '\n'
-
+        result += "\n"
+    result.replace('\'', '\"')
     output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img.odgt')
     f = open(output_path, 'w')
     f.write(result)
