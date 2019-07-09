@@ -40,6 +40,9 @@ class LearningModuleBase(nn.Module):
     def __init__(self):
         super(LearningModuleBase, self).__init__()
 
+    def forward(self, x):
+        raise NotImplementedError
+
     def _acc(self, pred, label):
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
@@ -58,6 +61,49 @@ class LearningModule(LearningModuleBase):
         self.crit = crit
 
     def forward(self, feed_dict, mode='train'):
+        feature_map = self.feature_extractor(feed_dict['img_data'])
+        acc = 0
+        loss = 0
+        for crit in self.crit:
+            if crit['weight'] == 0:
+                continue
+            label = feed_dict['{type}_label'.format(type=crit['type'])].long()
+            if crit['type'] == 'cls':
+                pred = self.cls(feature_map)
+
+            loss += crit['weight'] * crit['crit'](pred, label)
+            acc += self._acc(pred, label)
+
+        return loss, acc
+
+
+class NovelTuningModuleBase(nn.Module):
+    def __init__(self):
+        super(NovelTuningModuleBase, self).__init__()
+
+    def forward(self, x):
+        raise NotImplementedError
+
+    def _acc(self, pred, label):
+        _, preds = torch.max(pred, dim=1)
+        valid = (label >= 0).long()
+        acc_sum = torch.sum(valid * (preds == label).long())
+        instance_sum = torch.sum(valid)
+        acc = acc_sum.float() / (instance_sum.float() + 1e-10)
+        return acc
+
+
+class NovelTuningModule(NovelTuningModuleBase):
+    def __init__(self, feature_extractor, crit, cls=None, seg=None):
+        super(NovelTuningModule, self).__init__()
+        self.feature_extractor = feature_extractor
+        for param in feature_extractor.parameters():
+            param.requires_grad = False
+        self.cls = cls
+        self.seg = seg
+        self.crit = crit
+
+    def forward(self, feed_dict):
         feature_map = self.feature_extractor(feed_dict['img_data'])
         acc = 0
         loss = 0

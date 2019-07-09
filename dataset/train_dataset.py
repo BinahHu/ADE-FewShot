@@ -20,7 +20,7 @@ class ImgTrainDataset(BaseTrainDataset):
         self.batch_per_gpu = batch_per_gpu
 
         # classify images into classes according to their ratio between height and width
-        self.group_split = opt.group_split
+        self.group_split = (opt.group_split).copy()
         self.worst_ratio = opt.worst_ratio
         self.group_split.append(self.worst_ratio)
         self.group_split.insert(0, 1 / self.worst_ratio)
@@ -170,7 +170,7 @@ class ObjTrainDataset(BaseTrainDataset):
         self.batch_per_gpu = batch_per_gpu
 
         # classify images into classes according to their ratio between height and width
-        self.group_split = opt.group_split
+        self.group_split = (opt.group_split).copy()
         self.worst_ratio = opt.worst_ratio
         self.group_split.append(self.worst_ratio)
         self.group_split.insert(0, 1 / self.worst_ratio)
