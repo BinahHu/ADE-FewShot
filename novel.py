@@ -11,6 +11,7 @@ from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
 from utils import AverageMeter, parse_devices
 from model.parallel.replicate import patch_replication_callback
+from model.model_base import ModelBuilder, NovelTuningModule
 
 
 def evaluate(module, iterator, history, args, epoch):
@@ -34,9 +35,9 @@ def evaluate(module, iterator, history, args, epoch):
         # update average loss and acc
         ave_acc.update(acc.data.item() * 100)
 
-        print("Epoch[{}] Accuracy: {:4.2f}")
-        history['test']['epoch'].append(epoch)
-        history['test']['acc'].append(ave_acc)
+    print("Epoch[{}] Accuracy: {:4.2f}".format(epoch, ave_acc.average()))
+    history['test']['epoch'].append(epoch)
+    history['test']['acc'].append(ave_acc.average())
 
 
 
@@ -134,7 +135,7 @@ def main(args):
     loader_test = DataLoader(
         dataset_test, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
-        num_workers=user_scattered_collate,
+        num_workers=int(args.workers),
         drop_last=True,
         pin_memory=True
     )
@@ -150,7 +151,7 @@ def main(args):
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'test': {'epoch': [], 'acc': []}}
 
-    network = LearningModule(feature_extractor, crit, fc_classifier)
+    network = NovelTuningModule(feature_extractor, crit, fc_classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -160,7 +161,7 @@ def main(args):
 
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
-        checkpoint(network, history, args, epoch)
+        # checkpoint(network, history, args, epoch)
         if 'test' in args.mode:
             evaluate(network, iterator_test, history, args, epoch)
     print('Training Done')
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='LeNet')
-    parser.add_argument('--feat_dim', default=512)
+    parser.add_argument('--feat_dim', default=120)
     parser.add_argument('--fe_weight', default=None, help='weight of the feature extractor')
 
     # Path related arguments
@@ -183,24 +184,24 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=16, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=20, type=int,
+    parser.add_argument('--num_epoch', default=10, type=int,
                         help='epochs to train for')
-    parser.add_argument('--start_epoch', default=10, type=int,
+    parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--epoch_iters', default=5000, type=int,
+    parser.add_argument('--epoch_iters', default=10, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.8 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.8 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=189, type=int,
+    parser.add_argument('--num_class', default=293, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=16, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

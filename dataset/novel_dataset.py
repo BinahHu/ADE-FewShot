@@ -23,12 +23,11 @@ class ObjNovelDataset(BaseTestDataset):
         self.batch_per_gpu = batch_per_gpu
 
         # classify images into classes according to their ratio between height and width
-        self.group_split = opt.group_split
+        self.group_split = (opt.group_split).copy()
         self.worst_ratio = opt.worst_ratio
         self.group_split.append(self.worst_ratio)
         self.group_split.insert(0, 1 / self.worst_ratio)
         self.batch_record_list = [[] for i in range(len(self.group_split) - 1)]
-
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
@@ -41,7 +40,7 @@ class ObjNovelDataset(BaseTestDataset):
             height = anchor[1][1] - anchor[0][1]
             width = anchor[1][0] - anchor[0][0]
             for i in range(len(self.group_split) - 1):
-                if self.group_split[i] < width / height <= self.group_split[i + 1]:
+                if self.group_split[i] < (width / height) <= self.group_split[i + 1]:
                     self.batch_record_list[i].append(this_sample)
 
             # update current sample pointer
