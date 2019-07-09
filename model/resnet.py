@@ -3,7 +3,7 @@ import sys
 import torch
 import torch.nn as nn
 import math
-from parallel.batchnorm import SynchronizedBatchNorm2d
+from model.parallel.batchnorm import SynchronizedBatchNorm2d
 
 try:
     from urllib import urlretrieve

@@ -78,6 +78,15 @@ def checkpoint(nets, history, args, epoch_num):
 
 
 def main(args):
+    devices = ""
+    devices += '\"'
+    for index, id in enumerate(args.gpus):
+        if index != 0:
+            devices += ' ,'
+        devices += str(id)
+    devices += '\"'
+
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
     # Network Builders
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch)
@@ -92,7 +101,9 @@ def main(args):
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
-        num_workers=int(args.workers)
+        num_workers=int(args.workers),
+        drop_last=True,
+        pin_memory=True
     )
 
     print('1 Epoch = {} iters'.format(args.epoch_iters))
@@ -109,7 +120,10 @@ def main(args):
     patch_replication_callback(network)
     network.cuda()
 
-    for epoch in range(0, args.num_epoch):
+    if args.start_epoch != 0:
+        network.load_state_dict(torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
+
+    for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
         checkpoint(network, history, args, epoch)
     print('Training Done')
@@ -136,13 +150,13 @@ if __name__ == '__main__':
                         help='input batch size')
     parser.add_argument('--num_epoch', default=20, type=int,
                         help='epochs to train for')
-    parser.add_argument('--start_epoch', default=0, type=int,
+    parser.add_argument('--start_epoch', default=10, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
     parser.add_argument('--epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=2e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=2e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.5 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
@@ -168,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
     parser.add_argument("--worst_ratio", default=100)
-    parser.add_argument("--group_split", default=[1 / 2, 1, 2])
+    parser.add_argument("--group_split", default=[1/4, 1 / 2, 1, 2, 4])
 
     args = parser.parse_args()
 
