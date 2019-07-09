@@ -162,8 +162,8 @@ if __name__ == '__main__':
     parser.add_argument('--epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.8 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.8 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.2 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.2 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,

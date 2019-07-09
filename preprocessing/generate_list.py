@@ -133,8 +133,8 @@ def novel_obj_list(args, novel_set, novel_list, img_path):
     result_train = ""
     result_test = ""
 
-    for i in range(len(novel_list)):
-        for j in range(args.shot):
+    for j in range(args.shot):
+        for i in range(len(novel_list)):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
