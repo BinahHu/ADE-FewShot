@@ -77,6 +77,13 @@ def checkpoint(nets, history, args, epoch_num):
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
+def adjust_learning_rate(optimizers, cur_epoch, args):
+    if cur_epoch % 10 == 0 and cur_epoch != 0:
+        for optimizer in optimizers:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = param_group - 5 * 1e-3
+
+
 def main(args):
     devices = ""
     devices += '\"'
@@ -155,8 +162,8 @@ if __name__ == '__main__':
     parser.add_argument('--epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.5 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.8 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.8 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
@@ -177,7 +184,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./checkpoint',
+    parser.add_argument('--ckpt', default='./checkpoint_1',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
