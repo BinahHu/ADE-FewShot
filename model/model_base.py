@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
 from model.tail_blocks import FC_Classifier
-from resnet import resnet18
+from model.resnet import resnet18
 
 
 class ModelBuilder():
