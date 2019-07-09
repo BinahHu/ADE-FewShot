@@ -26,6 +26,7 @@ class ModelBuilder():
         feature_extractor.apply(self.weights_init)
         if len(weights) > 0:
             print('Loading weights for feature extractor')
+            print('load weights here')
             feature_extractor.load_state_dict(
                 torch.load(weights, map_location=lambda storage, loc:storage), strict=False)
         return feature_extractor
