@@ -113,7 +113,7 @@ def main(args):
     # os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor(arch=args.arch)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.fe_weight)
     fc_classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -144,11 +144,10 @@ def main(args):
 
     iterator_train = iter(loader_train)
     iterator_test = iter(loader_test)
-    optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.5)
+
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizers = [optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'test': {'epoch': [], 'acc': []}}
 
     network = NovelTuningModule(feature_extractor, crit, fc_classifier)
@@ -161,7 +160,7 @@ def main(args):
 
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
-        # checkpoint(network, history, args, epoch)
+        checkpoint(network, history, args, epoch)
         if 'test' in args.mode:
             evaluate(network, iterator_test, history, args, epoch)
     print('Training Done')
@@ -174,7 +173,7 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='LeNet')
     parser.add_argument('--feat_dim', default=120)
-    parser.add_argument('--fe_weight', default=None, help='weight of the feature extractor')
+    parser.add_argument('--fe_weight', default='./checkpoint/net_epoch_1.pth', help='weight of the feature extractor')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -217,7 +216,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./checkpoint_1',
+    parser.add_argument('--ckpt', default='./checkpoint',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
