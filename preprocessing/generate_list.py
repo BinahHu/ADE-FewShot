@@ -6,6 +6,7 @@ import numpy as np
 import os
 import argparse
 import random
+import math
 
 
 def base_list(args):
@@ -38,21 +39,43 @@ def base_obj_list(args, base_set, base_list, img_path):
     """
     Generate object level base training dataset odgt
     """
-    result = ""
+    result_train = ""
+    result_val = ""
+    all_list = [[] for category in base_list]
 
     for obj in base_set:
         path = img_path[int(obj["img"])]
         category = base_list.index(int(obj["obj"]))
         box = obj["box"]
+        annotation = {"path": path, "obj": category, "box": box}
+        all_list[category].append(annotation)
 
-        result += ('{' + '\"fpath_img\": ' + '\"' + path + '\"' + ', ')
-        result += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
-        result += ('\"' + 'cls_label' + '\": ' + str(category) + '}' + '\n')
+    for category in range(len(base_list)):
+        random.shuffle(all_list[category])
 
-    result.replace("\'", '\"')
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj.odgt')
+    for i in range(len(base_list)):
+        length = len(all_list[i])
+        for j in range(0, math.ceil(length / 11)):
+            result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+            box = all_list[i][j]["box"]
+            result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
+
+    for i in range(len(base_list)):
+        length = len(all_list[i])
+        for j in range(math.ceil(length / 11), length):
+            result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+            box = all_list[i][j]["box"]
+            result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_train += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
+
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_train.odgt')
     f = open(output_path, 'w')
-    f.write(result)
+    f.write(result_train)
+    f.close()
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_val.odgt')
+    f = open(output_path, 'w')
+    f.write(result_val)
     f.close()
 
 
