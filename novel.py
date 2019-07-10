@@ -190,10 +190,10 @@ if __name__ == '__main__':
                         help='input batch size')
     parser.add_argument('--num_epoch', default=100, type=int,
                         help='epochs to train for')
-    parser.add_argument('--num_test_iter', default=490, help='test iterations')
+    parser.add_argument('--num_test_iter', default=250, help='test iterations')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--epoch_iters', default=180, type=int,
+    parser.add_argument('--epoch_iters', default=90, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
@@ -224,6 +224,7 @@ if __name__ == '__main__':
                         help='frequency to display')
     parser.add_argument("--worst_ratio", default=100)
     parser.add_argument("--group_split", default=[1/4, 1 / 2, 1, 2, 4])
+    parser.add_argument("--crop", default=True)
 
     # Mode
     parser.add_argument("--mode", default="train-test", help="training or testing")

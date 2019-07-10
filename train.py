@@ -64,7 +64,6 @@ def train(module, iterator, optimizers, history, epoch, args):
 
             # adjust learning rate
         cur_iter = i + (epoch - 1) * args.epoch_iters
-        adjust_learning_rate(optimizers, epoch, args)
 
 
 def checkpoint(nets, history, args, epoch_num):
@@ -75,13 +74,6 @@ def checkpoint(nets, history, args, epoch_num):
                '{}/history_{}'.format(args.ckpt, suffix_latest))
     torch.save(nets.state_dict(),
                '{}/net_{}'.format(args.ckpt, suffix_latest))
-
-
-def adjust_learning_rate(optimizers, cur_epoch, args):
-    if cur_epoch % 10 == 0 and cur_epoch != 0:
-        for optimizer in optimizers:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group - 4 * 1e-3
 
 
 def main(args):
@@ -131,8 +123,17 @@ def main(args):
         network.load_state_dict(torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
 
     for epoch in range(args.start_epoch, args.num_epoch):
+        if epoch % 10 == 0:
+            args.lr_feat = args.lr_feat - 0.4 * 1e-2
+            args.lr_cls = args.lr_cls - 0.4 * 1e-2
+            optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
+                                             lr=args.lr_feat, momentum=0.5)
+            optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+                                            lr=args.lr_cls, momentum=0.5)
+            optimizers = [optimizer_feat, optimizer_cls]
         train(network, iterator_train, optimizers, history, epoch, args)
         checkpoint(network, history, args, epoch)
+
     print('Training Done')
 
 
@@ -151,9 +152,9 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=16, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
