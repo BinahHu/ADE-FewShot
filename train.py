@@ -123,6 +123,7 @@ def main(args):
         network.load_state_dict(torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
 
     for epoch in range(args.start_epoch, args.num_epoch):
+        """
         if epoch % 10 == 0:
             args.lr_feat = args.lr_feat - 0.4 * 1e-2
             args.lr_cls = args.lr_cls - 0.4 * 1e-2
@@ -131,6 +132,7 @@ def main(args):
             optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                             lr=args.lr_cls, momentum=0.5)
             optimizers = [optimizer_feat, optimizer_cls]
+        """
         train(network, iterator_train, optimizers, history, epoch, args)
         checkpoint(network, history, args, epoch)
 
@@ -163,8 +165,8 @@ if __name__ == '__main__':
     parser.add_argument('--epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.5 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
