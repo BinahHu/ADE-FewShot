@@ -81,88 +81,43 @@ class ObjNovelDataset(BaseTestDataset):
         if self.crop:
             this_short_size = 224
 
-        if not self.crop:
-            # calculate the BATCH's height and width
-            # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
-            batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
-            for i in range(self.batch_per_gpu):
-                anchor = batch_records[i]['anchor']
-                img_height = anchor[1][1] - anchor[0][1]
-                img_width = anchor[1][0] - anchor[0][0]
-                this_scale = min(
-                    this_short_size / min(img_height, img_width), \
-                    self.imgMaxSize / max(img_height, img_width))
-                img_resized_height, img_resized_width = img_height * this_scale, img_width * this_scale
-                batch_resized_size[i, :] = img_resized_height, img_resized_width
-            batch_resized_height = np.max(batch_resized_size[:, 0])
-            batch_resized_width = np.max(batch_resized_size[:, 1])
+        # calculate the BATCH's height and width
+        # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
+        batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
+        for i in range(self.batch_per_gpu):
+            anchor = batch_records[i]['anchor']
+            img_height = anchor[1][1] - anchor[0][1]
+            img_width = anchor[1][0] - anchor[0][0]
+            this_scale = this_short_size / min(img_height, img_width)
+            img_resized_height, img_resized_width = \
+                math.ceil(img_height * this_scale), math.ceil(img_width * this_scale)
+            batch_resized_size[i, :] = img_resized_height, img_resized_width
 
-            # Here we must pad both input image and segmentation map to size h' and w' so that p | h' and p | w'
-            batch_resized_height = int(self.round2nearest_multiple(batch_resized_height, self.padding_constant))
-            batch_resized_width = int(self.round2nearest_multiple(batch_resized_width, self.padding_constant))
+        batch_images = torch.zeros(self.batch_per_gpu, 3, 224, 224)
+        batch_labels = torch.zeros(self.batch_per_gpu).int()
+        for i in range(self.batch_per_gpu):
+            this_record = batch_records[i]
+            anchor = this_record['anchor']
 
-            batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resized_height, batch_resized_width)
-            batch_labels = torch.zeros(self.batch_per_gpu).int()
-            for i in range(self.batch_per_gpu):
-                this_record = batch_records[i]
-                anchor = this_record['anchor']
+            # load image and label
+            image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
+            assert (img.ndim == 3)
 
-                # load image and label
-                image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-                img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
-                assert (img.ndim == 3)
+            if self.random_flip is True:
+                random_flip = np.random.choice([0, 1])
+                if random_flip == 1:
+                    img = cv2.flip(img, 1)
 
-                if self.random_flip is True:
-                    random_flip = np.random.choice([0, 1])
-                    if random_flip == 1:
-                        img = cv2.flip(img, 1)
+            # note that each sample within a mini batch has different scale param
+            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]),
+                            interpolation=cv2.INTER_LINEAR)
+            img = self.random_crop(img)
+            # image transform
+            img = self.img_transform(img)
 
-                # note that each sample within a mini batch has different scale param
-                img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]),
-                                 interpolation=cv2.INTER_LINEAR)
-                # image transform
-                img = self.img_transform(img)
-
-                batch_images[i][:, :img.shape[1], :img.shape[2]] = img
-                batch_labels[i] = this_record['cls_label']
-        else:
-            # calculate the BATCH's height and width
-            # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
-            batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
-            for i in range(self.batch_per_gpu):
-                anchor = batch_records[i]['anchor']
-                img_height = anchor[1][1] - anchor[0][1]
-                img_width = anchor[1][0] - anchor[0][0]
-                this_scale = this_short_size / min(img_height, img_width)
-                img_resized_height, img_resized_width = \
-                    math.ceil(img_height * this_scale), math.ceil(img_width * this_scale)
-                batch_resized_size[i, :] = img_resized_height, img_resized_width
-
-            batch_images = torch.zeros(self.batch_per_gpu, 3, 224, 224)
-            batch_labels = torch.zeros(self.batch_per_gpu).int()
-            for i in range(self.batch_per_gpu):
-                this_record = batch_records[i]
-                anchor = this_record['anchor']
-
-                # load image and label
-                image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-                img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
-                assert (img.ndim == 3)
-
-                if self.random_flip is True:
-                    random_flip = np.random.choice([0, 1])
-                    if random_flip == 1:
-                        img = cv2.flip(img, 1)
-
-                # note that each sample within a mini batch has different scale param
-                img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]),
-                                 interpolation=cv2.INTER_LINEAR)
-                img = self.random_crop(img)
-                # image transform
-                img = self.img_transform(img)
-
-                batch_images[i][:, :, :] = img
-                batch_labels[i] = this_record['cls_label']
+            batch_images[i][:, :, :] = img
+            batch_labels[i] = this_record['cls_label']
 
         output = dict()
         output['img_data'] = batch_images
