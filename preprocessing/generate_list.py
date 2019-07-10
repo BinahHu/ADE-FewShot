@@ -163,9 +163,9 @@ if __name__ == '__main__':
     parser.add_argument('-root_dataset', default='../data/ADE/')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
     parser.add_argument('-dest', default='list')
-    parser.add_argument('-part', default='novel')
+    parser.add_argument('-part', default='base')
     parser.add_argument('-mode', default='obj')
-    parser.add_argument('-output', default='ADE_Novel/')
+    parser.add_argument('-output', default='ADE_Base/')
     parser.add_argument('-shot', default=10)
     args = parser.parse_args()
 

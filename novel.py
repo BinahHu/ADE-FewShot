@@ -22,7 +22,7 @@ def evaluate(module, iterator, history, args, epoch):
 
     tic = time.time()
 
-    for i in range(args.epoch_iters):
+    for i in range(args.num_test_iter):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -160,7 +160,8 @@ def main(args):
 
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
-        checkpoint(network, history, args, epoch)
+        if (epoch + 1) % 10 == 0:
+            checkpoint(network, history, args, epoch)
         if 'test' in args.mode:
             evaluate(network, iterator_test, history, args, epoch)
     print('Training Done')
@@ -171,9 +172,9 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='LeNet')
-    parser.add_argument('--feat_dim', default=120)
-    parser.add_argument('--fe_weight', default='./checkpoint/net_epoch_1.pth', help='weight of the feature extractor')
+    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--feat_dim', default=512)
+    parser.add_argument('--fe_weight', default='./fe_weight/resnet18.pth', help='weight of the feature extractor')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -187,15 +188,16 @@ if __name__ == '__main__':
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=16, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=10, type=int,
+    parser.add_argument('--num_epoch', default=100, type=int,
                         help='epochs to train for')
+    parser.add_argument('--num_test_iter', default=490, help='test iterations')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--epoch_iters', default=10, type=int,
+    parser.add_argument('--epoch_iters', default=180, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=293, type=int,
@@ -216,7 +218,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./checkpoint',
+    parser.add_argument('--ckpt', default='./checkpoint_1',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
