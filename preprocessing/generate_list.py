@@ -55,7 +55,7 @@ def base_obj_list(args, base_set, base_list, img_path):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
-        for j in range(0, math.ceil(length / 11)):
+        for j in range(0, math.ceil(length / 6)):
             result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
@@ -63,7 +63,7 @@ def base_obj_list(args, base_set, base_list, img_path):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
-        for j in range(math.ceil(length / 11), length):
+        for j in range(math.ceil(length / 6), length):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')

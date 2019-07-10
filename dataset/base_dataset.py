@@ -1,7 +1,7 @@
 import os
 import json
 import torch
-from dataset.dataset_base import BaseTrainDataset
+from dataset.dataset_base import BaseBaseDataset
 import cv2
 import torchvision
 from torchvision import transforms
@@ -9,12 +9,12 @@ import numpy as np
 import math
 
 
-class ImgTrainDataset(BaseTrainDataset):
+class ImgBaseDataset(BaseBaseDataset):
     """
     Form a batch with original images
     """
     def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
-        super(ImgTrainDataset, self).__init__(odgt, opt, **kwargs)
+        super(ImgBaseDataset, self).__init__(odgt, opt, **kwargs)
         self.root_dataset = opt.root_dataset
         self.random_flip = opt.random_flip
         # down sampling rate of segm labe
@@ -161,29 +161,22 @@ class ImgTrainDataset(BaseTrainDataset):
         #return self.num_sampleclass
 
 
-class ObjTrainDataset(BaseTrainDataset):
+class ObjBaseDataset(BaseBaseDataset):
     """
     Form batch at object level
     """
     def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
-        super(ObjTrainDataset, self).__init__(odgt, opt, **kwargs)
+        super(ObjBaseDataset, self).__init__(odgt, opt, **kwargs)
         self.root_dataset = opt.root_dataset
         self.random_flip = opt.random_flip
         # down sampling rate of segm labe
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
-
-        # classify images into classes according to their ratio between height and width
-        self.group_split = (opt.group_split).copy()
-        self.worst_ratio = opt.worst_ratio
-        self.group_split.append(self.worst_ratio)
-        self.group_split.insert(0, 1 / self.worst_ratio)
         self.batch_record_list = []
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
-        self.crop = opt.crop
 
     def _get_sub_batch(self):
         while True:
@@ -241,8 +234,8 @@ class ObjTrainDataset(BaseTrainDataset):
             # note that each sample within a mini batch has different scale param
             img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
             # image transform
-            img = self.img_transform(img)
             img = self.random_crop(img)
+            img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img
             batch_labels[i] = this_record['cls_label']
