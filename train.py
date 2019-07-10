@@ -3,11 +3,12 @@ import time
 import random
 import argparse
 import json
+import math
 
 import torch
 import torch.nn as nn
 
-from dataset.train_dataset import ObjTrainDataset, ImgTrainDataset
+from dataset.base_dataset import ObjBaseDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoaderIter, DataLoader
 from utils import  AverageMeter, parse_devices
@@ -26,7 +27,7 @@ def train(module, iterator, optimizers, history, epoch, args):
 
     # main loop
     tic = time.time()
-    for i in range(args.epoch_iters):
+    for i in range(args.train_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -52,18 +53,48 @@ def train(module, iterator, optimizers, history, epoch, args):
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'lr_feat: {:.6f}, lr_cls: {:.6f}, '
                   'Accuracy: {:4.2f}, Loss: {:.6f}'
-                  .format(epoch, i, args.epoch_iters,
+                  .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           args.lr_feat, args.lr_cls,
                           ave_acc.average(), ave_total_loss.average()))
 
-            fractional_epoch = epoch - 1 + 1. * i / args.epoch_iters
+            fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
             history['train']['epoch'].append(fractional_epoch)
             history['train']['loss'].append(loss.data.item())
             history['train']['acc'].append(acc.data.item())
 
-            # adjust learning rate
-        cur_iter = i + (epoch - 1) * args.epoch_iters
+
+def validate(module, iterator, history, epoch, args):
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    ave_acc = AverageMeter()
+
+    module.eval()
+    # main loop
+    tic = time.time()
+    for i in range(args.val_epoch_iters):
+        batch_data = next(iterator)
+        data_time.update(time.time() - tic)
+
+        _, acc = module(batch_data)
+        acc = acc.mean()
+
+        # measure elapsed time
+        batch_time.update(time.time() - tic)
+        tic = time.time()
+        # update average loss and acc
+        ave_acc.update(acc.data.item() * 100)
+
+        if i % args.disp_iter == 0:
+            print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
+                  'Accuracy: {:4.2f}'
+                  .format(epoch, i, args.val_epoch_iters,
+                          batch_time.average(), data_time.average(),
+                          ave_acc.average()))
+
+            fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
+            history['val']['epoch'].append(fractional_epoch)
+            history['val']['acc'].append(acc.data.item())
 
 
 def checkpoint(nets, history, args, epoch_num):
@@ -77,15 +108,6 @@ def checkpoint(nets, history, args, epoch_num):
 
 
 def main(args):
-    devices = ""
-    devices += '\"'
-    for index, id in enumerate(args.gpus):
-        if index != 0:
-            devices += ' ,'
-        devices += str(id)
-    devices += '\"'
-
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
     # Network Builders
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch)
@@ -96,7 +118,8 @@ def main(args):
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
-    dataset_train = ObjTrainDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_train = ObjBaseDataset(
+        args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -104,37 +127,45 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
+    dataset_val = ObjBaseDataset(
+        args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+    loader_val = DataLoader(
+        dataset_val, batch_size=len(args.gpus), shuffle=False,
+        collate_fn=user_scattered_collate,
+        num_workers=int(args.workers),
+        drop_last=True,
+        pin_memory=True
+    )
 
-    print('1 Epoch = {} iters'.format(args.epoch_iters))
+    args.train_epoch_iters = \
+        math.ceil(dataset_train.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
+    args.val_epoch_iters = \
+        math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
+    print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
+    print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
     iterator_train = iter(loader_train)
+    iterator_val = iter(loader_val)
+
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=args.lr_feat, momentum=0.5)
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
     optimizers = [optimizer_feat, optimizer_cls]
-    history = {'train': {'epoch': [], 'loss': [], 'acc': []}}
+    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
     network = LearningModule(feature_extractor, crit, fc_classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
 
     if args.start_epoch != 0:
-        network.load_state_dict(torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
+        network.load_state_dict(
+            torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
 
     for epoch in range(args.start_epoch, args.num_epoch):
-        """
-        if epoch % 10 == 0:
-            args.lr_feat = args.lr_feat - 0.4 * 1e-2
-            args.lr_cls = args.lr_cls - 0.4 * 1e-2
-            optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                             lr=args.lr_feat, momentum=0.5)
-            optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
-                                            lr=args.lr_cls, momentum=0.5)
-            optimizers = [optimizer_feat, optimizer_cls]
-        """
         train(network, iterator_train, optimizers, history, epoch, args)
         checkpoint(network, history, args, epoch)
+        validate(network, iterator_val, history, epoch, args)
 
     print('Training Done')
 
@@ -149,29 +180,32 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Base/base_obj.odgt')
+                        default='./data/ADE/ADE_Base/base_obj_train.odgt')
+    parser.add_argument('--list_val',
+                        default='./data/ADE/ADE_Base/base_obj_val.odgt')
     parser.add_argument('--root_dataset',
                         default='../')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=16, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=32, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--epoch_iters', default=5000, type=int,
+    parser.add_argument('--train_epoch_iters', default=5000, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
+    parser.add_argument('--val_epoch_iters', default=500, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.5 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=16, type=int,
+    parser.add_argument('--workers', default=32, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -187,13 +221,10 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./checkpoint_crop',
+    parser.add_argument('--ckpt', default='./checkpoint',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
-    parser.add_argument("--worst_ratio", default=100)
-    parser.add_argument("--group_split", default=[1/4, 1 / 2, 1, 2, 4])
-    parser.add_argument("--crop", default=True)
 
     args = parser.parse_args()
 

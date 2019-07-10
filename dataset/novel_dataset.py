@@ -7,7 +7,6 @@ import torch
 from dataset.dataset_base import BaseTestDataset
 import cv2
 import math
-from torchvision import transforms
 import numpy as np
 
 
