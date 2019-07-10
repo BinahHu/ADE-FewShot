@@ -214,6 +214,15 @@ class BaseTestDataset(Dataset):
         assert self.num_sample > 0
         print('# samples: {}'.format(self.num_sample))
 
+    def random_crop(self, img, size=(224, 224)):
+        h, w, _ = img.shape
+        # print("{} {}".format(h, w))
+        y = random.randint(0, h - size[0])
+        x = random.randint(0, w - size[1])
+        result = img[y:y + size[0], x:x + size[1], :]
+
+        return result
+
     def img_transform(self, img):
         # image to float
         img = img.astype(np.float32)

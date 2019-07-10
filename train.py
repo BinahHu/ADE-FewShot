@@ -151,9 +151,9 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=16, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
