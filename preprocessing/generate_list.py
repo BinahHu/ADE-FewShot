@@ -156,8 +156,8 @@ def novel_obj_list(args, novel_set, novel_list, img_path):
     result_train = ""
     result_test = ""
 
-    for j in range(args.shot):
-        for i in range(len(novel_list)):
+    for i in range(len(novel_list)):
+        for j in range(args.shot):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
@@ -175,7 +175,7 @@ def novel_obj_list(args, novel_set, novel_list, img_path):
     f.write(result_train)
     f.close()
 
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_test.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_val.odgt')
     f = open(output_path, 'w')
     f.write(result_test)
     f.close()
@@ -186,10 +186,10 @@ if __name__ == '__main__':
     parser.add_argument('-root_dataset', default='../data/ADE/')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
     parser.add_argument('-dest', default='list')
-    parser.add_argument('-part', default='base')
+    parser.add_argument('-part', default='novel')
     parser.add_argument('-mode', default='obj')
-    parser.add_argument('-output', default='ADE_Base/')
-    parser.add_argument('-shot', default=10)
+    parser.add_argument('-output', default='ADE_Novel/')
+    parser.add_argument('-shot', default=5)
     args = parser.parse_args()
 
     if args.dest == 'list':

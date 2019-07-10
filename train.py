@@ -95,10 +95,11 @@ def validate(module, iterator, history, epoch, args):
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
             history['val']['acc'].append(acc.data.item())
+    print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
 
 
 def checkpoint(nets, history, args, epoch_num):
-    print('Saving checkpoints...')
+    print('Saving checkpoints to {}...'.format(args.ckpt))
     suffix_latest = 'epoch_{}.pth'.format(epoch_num)
 
     torch.save(history,
@@ -195,9 +196,9 @@ if __name__ == '__main__':
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
-    parser.add_argument('--train_epoch_iters', default=5000, type=int,
+    parser.add_argument('--train_epoch_iters', default=20, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
-    parser.add_argument('--val_epoch_iters', default=500, type=int)
+    parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
     parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
