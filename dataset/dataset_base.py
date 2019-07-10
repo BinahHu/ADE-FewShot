@@ -122,7 +122,7 @@ def random_split(dataset, lengths):
     return [Subset(dataset, indices[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
 
-class BaseTrainDataset(Dataset):
+class BaseBaseDataset(Dataset):
     def __init__(self, odgt, opt, **kwargs):
         # parse options
         self.imgSize = opt.imgSize
@@ -183,7 +183,7 @@ class BaseTrainDataset(Dataset):
         return NotImplementedError
 
 
-class BaseTestDataset(Dataset):
+class BaseNovelDataset(Dataset):
     def __init__(self, odgt, opt, **kwargs):
         # parse options
         self.imgSize = opt.imgSize

@@ -2,7 +2,7 @@
 Training Code for the base feature extractor
 Supporting several modes
 """
-from dataset.train_dataset import ImgTrainDataset, ObjTrainDataset
+from dataset.base_dataset import ImgTrainDataset, ObjTrainDataset
 from dataset.dataloader import DataLoader, DataLoaderIter
 from dataset.collate import user_scattered_collate
 import torch
