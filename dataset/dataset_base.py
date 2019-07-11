@@ -153,14 +153,41 @@ class BaseBaseDataset(Dataset):
         assert self.num_sample > 0
         print('# samples: {}'.format(self.num_sample))
 
-    def random_crop(self, img, size=(224, 224)):
-        h, w, _ = img.shape
-        # print("{} {}".format(h, w))
-        y = random.randint(0, h - size[0])
-        x = random.randint(0, w - size[1])
-        result = img[y:y+size[0], x:x+size[1], :]
+    def random_crop(self, img, size=(224, 224), box=None):
+        if box is not None:
+            box = np.array(box).astype(np.int)
+            # if the length of the box is larger than the size we want
+            box_height = box[1, 1] - box[0, 1]
+            box_width = box[1, 0] - box[0, 0]
+            x_lower = max(0, min(box[0, 0], box[1, 0] - size[1]))
+            x_upper = min(img.shape[1] - size[1], max(box[0, 0] + size[1], box[1, 0]) - size[1])
+            y_lower = max(0, min(box[0, 1], box[1, 1] - size[0]))
+            y_upper = min(img.shape[0] - size[0], max(box[0, 1] + size[0], box[1, 1]) - size[0])
+            if box_height >= size[0] and box_width >= size[1]:
+                y = random.randint(box[0, 1], box[1, 1] - size[0])
+                x = random.randint(box[0, 0], box[1, 0] - size[1])
+            elif box_height >= size[0]:
+                y = random.randint(box[0, 1], box[1, 1] - size[0])
+                x = random.randint(x_lower, x_upper)
+            elif box_width >= size[1]:
+                y = random.randint(y_lower, y_upper)
+                x = random.randint(box[0, 0], box[1, 0] - size[1])
+            else:
+                y = random.randint(y_lower, y_upper)
+                x = random.randint(x_lower, x_upper)
 
-        return result
+            result = img[y:y + size[0], x:x + size[1]]
+            return [result, y, x]
+        else:
+            h, w, _ = img.shape
+            # print("{} {}".format(h, w))
+            y = random.randint(0, h - size[0])
+            x = random.randint(0, w - size[1])
+            result = img[y:y + size[0], x:x + size[1], :]
+
+            return [result, y, x]
+
+        return [result, y, x]
 
     def img_transform(self, img):
         # image to float
@@ -214,14 +241,39 @@ class BaseNovelDataset(Dataset):
         assert self.num_sample > 0
         print('# samples: {}'.format(self.num_sample))
 
-    def random_crop(self, img, size=(224, 224)):
-        h, w, _ = img.shape
-        # print("{} {}".format(h, w))
-        y = random.randint(0, h - size[0])
-        x = random.randint(0, w - size[1])
-        result = img[y:y + size[0], x:x + size[1], :]
+    def random_crop(self, img, size=(224, 224), box=None):
+        if box is not None:
+            box = np.array(box).astype(np.int)
+            # if the length of the box is larger than the size we want
+            box_height = box[1, 1] - box[0, 1]
+            box_width = box[1, 0] - box[0, 0]
+            x_lower = max(0, min(box[0 ,0], box[1, 0] - size[1]))
+            x_upper = min(img.shape[1], max(box[0, 0] + size[1], box[1, 0]))
+            y_lower = max(0, min(box[0, 1], box[1, 1] - size[0]))
+            y_upper = min(img.shape[0], max(box[0, 1] + size[0], box[1, 1]))
+            if box_height >= size[0] and box_width >= size[1]:
+                y = random.randint(box[0, 1], box[1, 1] - size[0])
+                x = random.randint(box[0, 0], box[1, 0] - size[1])
+            elif box_height >= size[0]:
+                y = random.randint(box[0, 1], box[1, 1] - size[0])
+                x = random.randint(x_lower, x_upper)
+            elif box_width >= size[1]:
+                y = random.randint(y_lower, y_upper)
+                x = random.randint(box[0, 0], box[1, 0] - size[1])
+            else:
+                y = random.randint(y_lower, y_upper)
+                x = random.randint(x_lower, x_upper)
 
-        return result
+            result = img[y:y + size[0], x:x+size[1]]
+            return [result, y, x]
+        else:
+            h, w, _ = img.shape
+            # print("{} {}".format(h, w))
+            y = random.randint(0, h - size[0])
+            x = random.randint(0, w - size[1])
+            result = img[y:y + size[0], x:x + size[1], :]
+
+            return [result, y, x]
 
     def img_transform(self, img):
         # image to float

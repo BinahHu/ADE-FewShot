@@ -81,34 +81,57 @@ def base_obj_list(args, base_set, base_list, img_path):
 
 def base_img_list(args, base_set, base_list, img_path, data_img):
     """
-    Generate image level base train list
+    Generate object level base training dataset odgt
     """
-    result = ""
+    img_size_path = os.path.join(os.path.join(args.root_dataset, args.origin_dataset),
+                                 args.img_size)
+    f = open(img_size_path, 'r')
+    image_size = json.load(f)
+    f.close()
 
-    for img in data_img:
-        path = img_path[int(img["img"])]
-        seg_path = path[:-4] + "_seg.png"
-        annotation = img["annotation"]
+    result_train = ""
+    result_val = ""
+    all_list = [[] for category in base_list]
 
-        new_annotate = []
-        for i, box in enumerate(annotation):
-            category_id = int(box["obj"])
-            anchor = box["box"]
-            if category_id in base_list:
-                new_box = {}
-                new_box["cls_label"] = base_list.index(category_id)
-                new_box["anchor"] = [[anchor[0], anchor[2]], [anchor[1], anchor[3]]]
-                new_annotate.append(new_box)
-        new_img = {}
-        new_img["fpath_img"] = path
-        new_img["fpath_segm"] = seg_path
-        new_img["annotation"] = new_annotate
-        result += str(new_img)
-        result += "\n"
-    result.replace('\'', '\"')
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img.odgt')
+    for obj in base_set:
+        path = img_path[int(obj["img"])]
+        category = base_list.index(int(obj["obj"]))
+        box = obj["box"]
+        annotation = {"path": path, "obj": category, "box": box}
+        all_list[category].append(annotation)
+
+    for category in range(len(base_list)):
+        random.shuffle(all_list[category])
+
+    for i in range(len(base_list)):
+        length = len(all_list[i])
+        for j in range(0, math.ceil(length / 6)):
+            result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+            box = all_list[i][j]["box"]
+            result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_val += ('\"' + 'cls_label' + '\": ' + str(i) + ', ')
+            size = image_size[all_list[i][j]['path']]
+            result_val += ('\"' + 'height' + '\": ' + str(size[0]) + ', ')
+            result_val += ('\"' + 'width' + '\": ' + str(size[1]) + '}' + '\n')
+
+    for i in range(len(base_list)):
+        length = len(all_list[i])
+        for j in range(math.ceil(length / 6), length):
+            result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+            box = all_list[i][j]["box"]
+            result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_train += ('\"' + 'cls_label' + '\": ' + str(i) + ', ')
+            size = image_size[all_list[i][j]['path']]
+            result_train += ('\"' + 'height' + '\": ' + str(size[0]) + ', ')
+            result_train += ('\"' + 'width' + '\": ' + str(size[1]) + '}' + '\n')
+
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_train.odgt')
     f = open(output_path, 'w')
-    f.write(result)
+    f.write(result_train)
+    f.close()
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_val.odgt')
+    f = open(output_path, 'w')
+    f.write(result_val)
     f.close()
 
 
@@ -186,10 +209,11 @@ if __name__ == '__main__':
     parser.add_argument('-root_dataset', default='../data/ADE/')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
     parser.add_argument('-dest', default='list')
-    parser.add_argument('-part', default='novel')
-    parser.add_argument('-mode', default='obj')
-    parser.add_argument('-output', default='ADE_Novel/')
+    parser.add_argument('-part', default='base')
+    parser.add_argument('-mode', default='img')
+    parser.add_argument('-output', default='ADE_Base/')
     parser.add_argument('-shot', default=5)
+    parser.add_argument('-img_size', default='img_path2size.json')
     args = parser.parse_args()
 
     if args.dest == 'list':

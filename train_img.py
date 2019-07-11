@@ -7,12 +7,14 @@ import math
 
 import torch
 import torch.nn as nn
-from dataset.novel_dataset import ObjNovelDataset
+
+from dataset.base_dataset import ImgBaseDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
-from dataset.dataloader import DataLoader, DataLoaderIter
-from utils import AverageMeter, parse_devices
+from dataset.dataloader import DataLoaderIter, DataLoader
+from utils import  AverageMeter, parse_devices
+
+from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
-from model.model_base import ModelBuilder, NovelTuningModule, LearningModule
 
 
 def train(module, iterator, optimizers, history, epoch, args):
@@ -97,7 +99,7 @@ def validate(module, iterator, history, epoch, args):
 
 
 def checkpoint(nets, history, args, epoch_num):
-    print('Saving checkpoints...')
+    print('Saving checkpoints to {}...'.format(args.ckpt))
     suffix_latest = 'epoch_{}.pth'.format(epoch_num)
 
     torch.save(history,
@@ -109,7 +111,7 @@ def checkpoint(nets, history, args, epoch_num):
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.fe_weight)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -117,7 +119,7 @@ def main(args):
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
-    dataset_train = ObjNovelDataset(
+    dataset_train = ImgBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
@@ -126,7 +128,7 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
-    dataset_val = ObjNovelDataset(
+    dataset_val = ImgBaseDataset(
         args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
@@ -150,10 +152,9 @@ def main(args):
                                      lr=args.lr_feat, momentum=0.5)
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
-    # optimizers = [optimizer_feat, optimizer_cls]
-    optimizers = [optimizer_cls]
+    optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
-    network = NovelTuningModule(feature_extractor, crit, fc_classifier)
+    network = LearningModule(feature_extractor, crit, fc_classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -177,22 +178,21 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--fe_weight', default='./weights/feature_16.pth')
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Novel/novel_obj_train.odgt')
+                        default='./data/ADE/ADE_Base/base_img_train.odgt')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Novel/novel_obj_val.odgt')
+                        default='./data/ADE/ADE_Base/base_img_val.odgt')
     parser.add_argument('--root_dataset',
                         default='../')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=32, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=1000, type=int,
+    parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
@@ -200,13 +200,13 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=5.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=2.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=2.5 * 1e-2, type=float, help='LR')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=293, type=int,
+    parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=32, type=int,
+    parser.add_argument('--workers', default=16, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./novel_ckpt_1',
+    parser.add_argument('--ckpt', default='./checkpoint',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
