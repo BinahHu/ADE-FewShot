@@ -106,6 +106,9 @@ class NovelTuningModule(NovelTuningModuleBase):
 
     def forward(self, feed_dict):
         feature_map = self.feature_extractor(feed_dict['img_data'])
+        if 'crop_box' in feed_dict.keys():
+            box = feed_dict['crop_box']
+            feature_map = feature_map[box[0]: box[2], box[1]:box[3]]
         acc = 0
         loss = 0
         for crit in self.crit:

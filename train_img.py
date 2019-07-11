@@ -8,7 +8,7 @@ import math
 import torch
 import torch.nn as nn
 
-from dataset.base_dataset import ObjBaseDataset
+from dataset.base_dataset import ImgBaseDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoaderIter, DataLoader
 from utils import  AverageMeter, parse_devices
@@ -119,7 +119,7 @@ def main(args):
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
-    dataset_train = ObjBaseDataset(
+    dataset_train = ImgBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
@@ -128,7 +128,7 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
-    dataset_val = ObjBaseDataset(
+    dataset_val = ImgBaseDataset(
         args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
@@ -181,16 +181,16 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Base/base_obj_train.odgt')
+                        default='./data/ADE/ADE_Base/base_img_train.odgt')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Base/base_obj_val.odgt')
+                        default='./data/ADE/ADE_Base/base_img_val.odgt')
     parser.add_argument('--root_dataset',
                         default='../')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=32, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=8, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
@@ -200,13 +200,13 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=2.5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=2.5 * 1e-2, type=float, help='LR')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=32, type=int,
+    parser.add_argument('--workers', default=16, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
