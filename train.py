@@ -98,7 +98,7 @@ def validate(module, iterator, history, epoch, args):
                           batch_time.average(), data_time.average(),
                           ave_acc.average()))
             
-                  info = {'acc':ave_acc.average()}
+            info = {'acc':ave_acc.average()}
             for tag, value in info.items():
                 args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
 
