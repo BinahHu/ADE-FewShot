@@ -16,6 +16,8 @@ from utils import  AverageMeter, parse_devices
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
 
+from logger import Logger
+
 
 def train(module, iterator, optimizers, history, epoch, args):
     batch_time = AverageMeter()
@@ -57,6 +59,10 @@ def train(module, iterator, optimizers, history, epoch, args):
                           batch_time.average(), data_time.average(),
                           args.lr_feat, args.lr_cls,
                           ave_acc.average(), ave_total_loss.average()))
+            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average()}
+            for tag, value in info.items():
+                args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
+
 
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
             history['train']['epoch'].append(fractional_epoch)
@@ -91,6 +97,10 @@ def validate(module, iterator, history, epoch, args):
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average()))
+            
+                  info = {'acc':ave_acc.average()}
+            for tag, value in info.items():
+                args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
@@ -162,6 +172,10 @@ def main(args):
     if args.start_epoch != 0:
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
+    
+    args.train_logger = Logger('./log_base_train')
+    args.val_logger = Logger('./log_base_val')
+
 
     # warm up
     for warm_up_epoch in range(args.warmup):
