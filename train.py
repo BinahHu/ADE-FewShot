@@ -170,7 +170,7 @@ def main(args):
         optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                 lr=(1+warm_up_epoch)*8.0*1e-3)
         train(network, iterator_train, optimizers, history, warm_up_epoch, args)
-        validate(network, iterator_val, history, epoch, args)
+        validate(network, iterator_val, history, warm_up_epoch, args)
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
