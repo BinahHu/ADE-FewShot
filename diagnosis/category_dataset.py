@@ -1,33 +1,34 @@
-"""
-Dataset for novel classes
-"""
-import os
-import json
+import sys
+sys.path.append('../')
+from dataset.dataset_base import BaseNovelDataset, BaseBaseDataset
 import torch
-from dataset.dataset_base import BaseNovelDataset
-import cv2
-import math
+import torch.nn as nn
 import numpy as np
+import argparse
+import json
+import math
+import cv2
+import os
 
 
-class ObjNovelDataset(BaseNovelDataset):
-    """
-    Form batch at object level
-    """
-
-    def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
-        super(ObjNovelDataset, self).__init__(odgt, opt, **kwargs)
+class ObjCategoryDataset(BaseBaseDataset):
+    def __init__(self, category, odgt, opt, batch_per_gpu=1, **kwargs):
+        super(ObjCategoryDataset, self).__init__(odgt, opt, **kwargs)
+        self.category = category
         self.root_dataset = opt.root_dataset
-        self.random_flip = opt.random_flip
-        # down sampling rate of segm labe
-        self.segm_downsampling_rate = opt.segm_downsampling_rate
+        self.category_list = []
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
-
+        self.parse_into_category()
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
 
+    def parse_into_category(self):
+        for sample in self.list_sample:
+            if sample['cls_label'] == self.category:
+                self.category_list.append(sample)
+    
     def _get_sub_batch(self):
         while True:
             # get a sample record
@@ -57,7 +58,6 @@ class ObjNovelDataset(BaseNovelDataset):
         batch_records = self._get_sub_batch()
 
         this_short_size = 224
-
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
@@ -96,6 +96,5 @@ class ObjNovelDataset(BaseNovelDataset):
         return output
 
     def __len__(self):
-        return int(1e10)  # It's a fake length due to the trick that every loader maintains its own list
-        # return self.num_sampleclass
-
+        return int(1e10) # It's a fake length due to the trick that every loader maintains its own list
+        #return self.num_sampleclass
