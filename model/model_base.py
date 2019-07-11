@@ -3,6 +3,7 @@ import torch.nn as nn
 from model.feature_extractor import LeNet
 from model.tail_blocks import FC_Classifier
 from model.resnet import resnet18
+import math
 
 
 class ModelBuilder():
@@ -108,7 +109,8 @@ class NovelTuningModule(NovelTuningModuleBase):
         feature_map = self.feature_extractor(feed_dict['img_data'])
         if 'crop_box' in feed_dict.keys():
             box = feed_dict['crop_box']
-            feature_map = feature_map[box[0]: box[2], box[1]:box[3]]
+            feature_map = feature_map[math.floor(box[0]/32): math.ceil(box[2]/32),
+                          math.floor(box[1]):math.ceil(box[3])]
         acc = 0
         loss = 0
         for crit in self.crit:
