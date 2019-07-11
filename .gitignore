@@ -1,5 +1,8 @@
-/.idea/
-.idea/workplace.xml
-utils/*
-!/utils/filterl2.json
-!/utils/namelist.json
+.idea/
+__pycache__/
+data/
+history*
+checkpoint/
+*.swp
+*/*.swp
+log*/
