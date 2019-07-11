@@ -84,7 +84,7 @@ class ObjNovelDataset(BaseNovelDataset):
             # note that each sample within a mini batch has different scale param
             img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
             # image transform
-            img = self.random_crop(img)
+            img = self.random_crop(img)[0]
             img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img
