@@ -61,7 +61,7 @@ def train(module, iterator, optimizers, history, epoch, args):
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
             history['train']['epoch'].append(fractional_epoch)
             history['train']['loss'].append(loss.data.item())
-            history['train']['acc'].append(acc.data.item())
+            history['train']['acc'].append(ave_acc.average)
 
 
 def validate(module, iterator, history, epoch, args):
@@ -94,7 +94,7 @@ def validate(module, iterator, history, epoch, args):
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
-            history['val']['acc'].append(acc.data.item())
+            history['val']['acc'].append(ave_acc.average())
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
 
 
@@ -149,9 +149,9 @@ def main(args):
     iterator_val = iter(loader_val)
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.5)
+                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
-                                    lr=args.lr_cls, momentum=0.5)
+                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
     network = LearningModule(feature_extractor, crit, fc_classifier)
@@ -163,6 +163,21 @@ def main(args):
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
 
+    # warm up
+    for warm_up_epoch in range(args.warmup):
+        optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
+                lr=(1+warm_up_epoch)*8.0*1e-3)
+        optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+                lr=(1+warm_up_epoch)*8.0*1e-3)
+        train(network, iterator_train, optimizers, history, warm_up_epoch, args)
+        validate(network, iterator_val, history, epoch, args)
+    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+
+    # train for real
+    optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
+                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
+    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+                                    lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args)
         checkpoint(network, history, args, epoch)
@@ -188,9 +203,9 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=32, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=40, type=int,
                         help='epochs to train for')
@@ -200,13 +215,15 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=2.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=2.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=4.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=4.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--weight_decay', default=0.0001)
+    parser.add_argument('--warmup', default=5)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=32, type=int,
+    parser.add_argument('--workers', default=64, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -224,7 +241,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
     parser.add_argument('--ckpt', default='./checkpoint',
                         help='folder to output checkpoints')
-    parser.add_argument('--disp_iter', type=int, default=20,
+    parser.add_argument('--disp_iter', type=int, default=10,
                         help='frequency to display')
 
     args = parser.parse_args()
