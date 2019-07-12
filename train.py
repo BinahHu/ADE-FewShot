@@ -19,7 +19,7 @@ from model.parallel.replicate import patch_replication_callback
 from logger import Logger
 
 
-def train(module, iterator, optimizers, history, epoch, args):
+def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_total_loss = AverageMeter()
@@ -50,6 +50,11 @@ def train(module, iterator, optimizers, history, epoch, args):
         # update average loss and acc
         ave_total_loss.update(loss.data.item())
         ave_acc.update(acc.data.item() * 100)
+
+        if mode=='warm':
+            warm_up_adjust_lr(optimizers, epoch, i, args)
+        elif mode=='train':
+            train_adjust_lr(optimizers, epoch, i, args)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
@@ -118,6 +123,20 @@ def checkpoint(nets, history, args, epoch_num):
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
+def warm_up_adjust_lr(optimizers, epoch, iter, args):
+    # print('Adjust learning rate in warm up')
+    for optimizer in optimizers:
+        lr = args.lr_feat * args.warm_up_factor
+        lr = lr + (args.lr_feat - lr) * \
+             (epoch * args.train_epoch_iters + iter) / args.warm_up_iters
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
+
+def train_adjust_lr(optimizers, epoch, iter, args):
+    return None
+
+
 def main(args):
     # Network Builders
     builder = ModelBuilder()
@@ -172,20 +191,19 @@ def main(args):
     if args.start_epoch != 0:
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
+        history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.start_epoch -1))
     
     args.train_logger = Logger('./log_base_train')
     args.val_logger = Logger('./log_base_val')
 
-
     # warm up
-    for warm_up_epoch in range(args.warmup):
-        optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                lr=(1+warm_up_epoch)*8.0*1e-3)
-        optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
-                lr=(1+warm_up_epoch)*8.0*1e-3)
-        train(network, iterator_train, optimizers, history, warm_up_epoch, args)
-        validate(network, iterator_val, history, warm_up_epoch, args)
-    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+    if args.start_epoch == 0:
+        print('Start Warm Up')
+        args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
+        for warm_up_epoch in range(args.warm_up_epoch):
+            train(network, iterator_train, optimizers, history, warm_up_epoch, args)
+            validate(network, iterator_val, history, warm_up_epoch, args, )
+        history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
@@ -229,15 +247,19 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=4.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=4.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
-    parser.add_argument('--warmup', default=5)
+
+    # Warm up
+    parser.add_argument('--warm_up_epoch', default=5)
+    parser.add_argument('--warm_up_factor', default=0.1)
+    parser.add_argument('--war_up_iters', default=100)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=64, type=int,
+    parser.add_argument('--workers', default=32, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
