@@ -250,8 +250,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=5.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=5.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5.0 * 1e-2, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
