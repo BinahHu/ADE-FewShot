@@ -189,7 +189,8 @@ class ObjBaseDataset(BaseBaseDataset):
             self.if_shuffled = True
 
         # get sub-batch candidates
-        batch_records = self._get_sub_batch_cat()
+        batch_records = self._get_sub_batch()
+        #batch_records = self._get_sub_batch_cat()
 
         this_short_size = 224
         # calculate the BATCH's height and width
