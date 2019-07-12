@@ -62,7 +62,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                   'Accuracy: {:4.2f}, Loss: {:.6f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          args.lr_feat, args.lr_cls,
+                          optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average()))
             info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average()}
             for tag, value in info.items():
@@ -235,7 +235,7 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    parser.add_argument('--gpus', default=[0, 1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
