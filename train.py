@@ -172,20 +172,23 @@ def main(args):
     if args.start_epoch != 0:
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
+        history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.start_epoch -1))
     
     args.train_logger = Logger('./log_base_train')
     args.val_logger = Logger('./log_base_val')
 
 
     # warm up
-    for warm_up_epoch in range(args.warmup):
-        optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                lr=(1+warm_up_epoch)*8.0*1e-3)
-        optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
-                lr=(1+warm_up_epoch)*8.0*1e-3)
-        train(network, iterator_train, optimizers, history, warm_up_epoch, args)
-        validate(network, iterator_val, history, warm_up_epoch, args)
-    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+    if args.start_epoch == 0:
+        print('Start Warm Up')
+        for warm_up_epoch in range(args.warmup):
+            optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
+                    lr=(1+warm_up_epoch)*2.0*1e-2)
+            optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+                    lr=(1+warm_up_epoch)*2.0*1e-2)
+            train(network, iterator_train, optimizers, history, warm_up_epoch, args)
+            validate(network, iterator_val, history, warm_up_epoch, args)
+        history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
@@ -229,15 +232,15 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=4.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=4.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-2, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
     parser.add_argument('--warmup', default=5)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=64, type=int,
+    parser.add_argument('--workers', default=32, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
