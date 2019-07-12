@@ -211,6 +211,7 @@ def main(args):
                                      lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls]
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args, mode='train')
         validate(network, iterator_val, history, epoch, args)
@@ -225,7 +226,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
-    parser.add_argument('--feat_dim', default=512)i
+    parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
 
     # Path related arguments
@@ -249,8 +250,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=8.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=8.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5.0 * 1e-3, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
