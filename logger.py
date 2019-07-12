@@ -1,6 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import scipy.misc 
+
+import os
+
 try:
         from StringIO import StringIO  # Python 2.7
 except ImportError:
@@ -10,7 +13,14 @@ class Logger(object):
     def __init__(self, log_dir):
         """Create a summary writer logging to log_dir."""
          # 创建一个指向log文件夹的summary writer
+        if os.path.exists(log_dir):
+            for f in os.listdir(log_dir):
+                os.remove(os.path.join(log_dir, f))
+        else:
+            os.makedirs(log_dir)
+
         self.writer = tf.summary.FileWriter(log_dir)
+
 
     def scalar_summary(self, tag, value, step):
         """Log a scalar variable."""
