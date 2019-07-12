@@ -30,6 +30,11 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     # main loop
     tic = time.time()
     for i in range(args.train_epoch_iters):
+        if mode=='warm':
+            warm_up_adjust_lr(optimizers, epoch, i, args)
+        elif mode=='train':
+            train_adjust_lr(optimizers, epoch, i, args)
+
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -51,18 +56,13 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         ave_total_loss.update(loss.data.item())
         ave_acc.update(acc.data.item() * 100)
 
-        if mode=='warm':
-            warm_up_adjust_lr(optimizers, epoch, i, args)
-        elif mode=='train':
-            train_adjust_lr(optimizers, epoch, i, args)
-
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'lr_feat: {:.6f}, lr_cls: {:.6f}, '
                   'Accuracy: {:4.2f}, Loss: {:.6f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          args.lr_feat, args.lr_cls,
+                          optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average()))
             info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average()}
             for tag, value in info.items():
@@ -123,17 +123,17 @@ def checkpoint(nets, history, args, epoch_num):
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
-def warm_up_adjust_lr(optimizers, epoch, iter, args):
+def warm_up_adjust_lr(optimizers, epoch, iteration, args):
     # print('Adjust learning rate in warm up')
     for optimizer in optimizers:
         lr = args.lr_feat * args.warm_up_factor
         lr = lr + (args.lr_feat - lr) * \
-             (epoch * args.train_epoch_iters + iter) / args.warm_up_iters
+             (epoch * args.train_epoch_iters + iteration) / args.warm_up_iters
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
 
-def train_adjust_lr(optimizers, epoch, iter, args):
+def train_adjust_lr(optimizers, epoch, iteration, args):
     return None
 
 
@@ -235,7 +235,7 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    parser.add_argument('--gpus', default=[0, 1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
