@@ -188,10 +188,10 @@ def main(args):
     patch_replication_callback(network)
     network.cuda()
 
-    if args.start_epoch != 0:
+    if args.log != '':
         network.load_state_dict(
-            torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.start_epoch - 1)))
-        history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.start_epoch -1))
+            torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
+        history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.log))
     
     args.train_logger = Logger('./log_base_train')
     args.val_logger = Logger('./log_base_val')
@@ -203,6 +203,7 @@ def main(args):
         for warm_up_epoch in range(args.warm_up_epoch):
             train(network, iterator_train, optimizers, history, warm_up_epoch, args)
             validate(network, iterator_val, history, warm_up_epoch, args, )
+            checkpoint(network, history, args, -args.warm_up_epoch + epoch)
         history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
@@ -210,10 +211,11 @@ def main(args):
                                      lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls]
     for epoch in range(args.start_epoch, args.num_epoch):
-        train(network, iterator_train, optimizers, history, epoch, args)
-        checkpoint(network, history, args, epoch)
+        train(network, iterator_train, optimizers, history, epoch, args, mode='train')
         validate(network, iterator_val, history, epoch, args)
+        checkpoint(network, history, args, epoch)
 
     print('Training Done')
 
@@ -225,6 +227,7 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
+    parser.add_argument('--log', default='', help='load trained checkpoint')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -235,7 +238,7 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
@@ -247,14 +250,14 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5.0 * 1e-2, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
-    parser.add_argument('--warm_up_epoch', default=5)
+    parser.add_argument('--warm_up_epoch', type=int, default=1)
     parser.add_argument('--warm_up_factor', default=0.1)
-    parser.add_argument('--war_up_iters', default=100)
+    parser.add_argument('--warm_up_iters', default=100)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
