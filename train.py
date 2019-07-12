@@ -197,13 +197,13 @@ def main(args):
     args.val_logger = Logger('./log_base_val')
 
     # warm up
-    if args.start_epoch == 0:
+    if args.log == '' and args.start_epoch  == 0:
         print('Start Warm Up')
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
         for warm_up_epoch in range(args.warm_up_epoch):
             train(network, iterator_train, optimizers, history, warm_up_epoch, args)
             validate(network, iterator_val, history, warm_up_epoch, args, )
-            checkpoint(network, history, args, -args.warm_up_epoch + epoch)
+            checkpoint(network, history, args, -args.warm_up_epoch + warm_up_epoch)
         history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
@@ -250,8 +250,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=5.0 * 1e-2, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=5.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5.0 * 1e-3, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
