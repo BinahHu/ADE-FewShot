@@ -29,6 +29,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
 
     # main loop
     tic = time.time()
+    acc_iter = 0
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -42,6 +43,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss, acc = module(batch_data)
         loss = loss.mean()
         acc = acc.mean()
+        acc_iter += acc
 
         # Backward
         loss.backward()
@@ -64,7 +66,8 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average()))
-            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average()}
+            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.dsip_iter}
+            acc_iter = 0
             for tag, value in info.items():
                 args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
 
@@ -83,12 +86,14 @@ def validate(module, iterator, history, epoch, args):
     module.eval()
     # main loop
     tic = time.time()
+    acc_iter = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
         _, acc = module(batch_data)
         acc = acc.mean()
+        acc_iter += acc
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -103,7 +108,7 @@ def validate(module, iterator, history, epoch, args):
                           batch_time.average(), data_time.average(),
                           ave_acc.average()))
             
-            info = {'acc':ave_acc.average()}
+            info = {'acc':ave_acc.average(), 'acc-iter':acc_iter / args.disp_iter}
             for tag, value in info.items():
                 args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
 
