@@ -116,10 +116,50 @@ class ObjBaseDataset(BaseBaseDataset):
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
+        # organize objects in categories level
+        self.construct_cat_list()
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
+        self.cur_cat = 0
+        self.cur_cat_idx = [0 for _ in range(len(self.cat_sample))]
         self.if_shuffled = False
+    
+    def construct_cat_list(self):
+        cat_map = {}
+        self.cat_sample = []
+        for sample in self.list_sample:
+            cat = sample['cls_label']
+            if cat not in cat_map:
+                cat_map[cat] = len(self.cat_sample)
+                self.cat_sample.append([])
+            self.cat_sample[cat_map[cat]].append(sample)
+        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
+        self.cat_num = len(self.cat_sample)
+    
+    def _get_sub_batch_cat(self):
+        while True:
+            #get a sample record
+            cat = self.cur_cat
+            this_sample = self.cat_sample[cat][self.cur_cat_idx[cat]]
+            self.batch_record_list.append(this_sample)
+            
+            #update current sample pointer
+            self.cur_cat_idx[cat] += 1
+            if self.cur_cat_idx[cat] >= self.cat_sample_num[cat]:
+                self.cur_cat_idx[cat] = 0
+                np.random.shuffle(self.cat_sample[cat])
+            
+            if len(self.batch_record_list) == self.batch_per_gpu:
+                batch_records = self.batch_record_list
+                self.batch_record_list = []
+                # update current category pointer
+                self.cur_cat += 1
+                if self.cur_cat >= self.cat_num:
+                    self.cur_cat = 0
+                    np.random.shuffle(self.cat_sample)
+                break
+        return batch_records
 
     def _get_sub_batch(self):
         while True:
@@ -137,17 +177,19 @@ class ObjBaseDataset(BaseBaseDataset):
                 batch_records = self.batch_record_list
                 self.batch_record_list = []
                 break
-
         return batch_records
 
     def __getitem__(self, index):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
+            np.random.shuffle(self.cat_sample)
+            for cat_list in self.cat_sample:
+                np.random.shuffle(cat_list)
             self.if_shuffled = True
 
         # get sub-batch candidates
-        batch_records = self._get_sub_batch()
+        batch_records = self._get_sub_batch_cat()
 
         this_short_size = 224
         # calculate the BATCH's height and width
@@ -167,6 +209,7 @@ class ObjBaseDataset(BaseBaseDataset):
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
             anchor = this_record['anchor']
+
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
