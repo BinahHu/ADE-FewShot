@@ -30,6 +30,11 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     # main loop
     tic = time.time()
     for i in range(args.train_epoch_iters):
+        if mode=='warm':
+            warm_up_adjust_lr(optimizers, epoch, i, args)
+        elif mode=='train':
+            train_adjust_lr(optimizers, epoch, i, args)
+
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -50,11 +55,6 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         # update average loss and acc
         ave_total_loss.update(loss.data.item())
         ave_acc.update(acc.data.item() * 100)
-
-        if mode=='warm':
-            warm_up_adjust_lr(optimizers, epoch, i, args)
-        elif mode=='train':
-            train_adjust_lr(optimizers, epoch, i, args)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
@@ -123,17 +123,17 @@ def checkpoint(nets, history, args, epoch_num):
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
-def warm_up_adjust_lr(optimizers, epoch, iter, args):
+def warm_up_adjust_lr(optimizers, epoch, iteration, args):
     # print('Adjust learning rate in warm up')
     for optimizer in optimizers:
         lr = args.lr_feat * args.warm_up_factor
         lr = lr + (args.lr_feat - lr) * \
-             (epoch * args.train_epoch_iters + iter) / args.warm_up_iters
+             (epoch * args.train_epoch_iters + iteration) / args.warm_up_iters
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
 
-def train_adjust_lr(optimizers, epoch, iter, args):
+def train_adjust_lr(optimizers, epoch, iteration, args):
     return None
 
 
