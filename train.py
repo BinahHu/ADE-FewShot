@@ -140,6 +140,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
+    return None
     if (epoch == 6 or epoch == 15) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
@@ -203,8 +204,8 @@ def main(args):
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
         history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.log))
     
-    args.train_logger = Logger('./log_base_train')
-    args.val_logger = Logger('./log_base_val')
+    args.train_logger = Logger(os.path.join(args.log_train, args.comment))
+    args.val_logger = Logger(os.path.join(args.log_val, args.comment))
 
     # warm up
     if args.log == '' and args.start_epoch  == 0:
@@ -295,6 +296,12 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=10,
                         help='frequency to display')
+    parser.add_argument('--log_train', default="./log_base_train/",
+                        help='dir to save train log')
+    parser.add_argument('--log_val', default="./log_base_val/",
+                        help='dir to save val log')
+    parser.add_argument('--comment', default="",
+                        help='add comment to this train')
 
     args = parser.parse_args()
 
