@@ -68,8 +68,11 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                           ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
             info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
             acc_iter = 0
+            dispepoch = epoch
+            if not args.iswarmup:
+                dispepoch += 1
             for tag, value in info.items():
-                args.logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.train_epoch_iters)
 
 
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
@@ -110,8 +113,11 @@ def validate(module, iterator, history, epoch, args):
             
             info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
             acc_iter = 0
+            dispepoch = epoch
+            if not args.iswarmup:
+                dispepoch += 1
             for tag, value in info.items():
-                args.logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
@@ -206,15 +212,19 @@ def main(args):
     
     args.logger = Logger(os.path.join(args.log_dir, args.comment))
 
+    args.iswarmup = False
+
     # warm up
     if args.log == '' and args.start_epoch  == 0:
         print('Start Warm Up')
+        args.iswarmup = True
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
         for warm_up_epoch in range(args.warm_up_epoch):
             train(network, iterator_train, optimizers, history, warm_up_epoch, args)
             validate(network, iterator_val, history, warm_up_epoch, args, )
             checkpoint(network, history, args, -args.warm_up_epoch + warm_up_epoch)
         history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+    args.iswarmup = False
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
