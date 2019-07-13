@@ -7,3 +7,4 @@ ckpt*/
 *.swp
 */*.swp
 log*/
+model/prtrain/
