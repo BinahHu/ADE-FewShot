@@ -43,7 +43,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss, acc = module(batch_data)
         loss = loss.mean()
         acc = acc.mean()
-        acc_iter += acc
+        acc_iter += acc.data.item() * 100
 
         # Backward
         loss.backward()
@@ -93,7 +93,7 @@ def validate(module, iterator, history, epoch, args):
 
         _, acc = module(batch_data)
         acc = acc.mean()
-        acc_iter += acc
+        acc_iter += acc.data.item() * 100
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -285,6 +285,8 @@ if __name__ == '__main__':
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')
+    parser.add_argument('--sample_type', default='inst',
+                        help='instance level or category level sampling')
 
 
     # Misc arguments
