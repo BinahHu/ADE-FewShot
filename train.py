@@ -66,7 +66,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average()))
-            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.dsip_iter}
+            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.disp_iter}
             acc_iter = 0
             for tag, value in info.items():
                 args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
@@ -139,7 +139,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 2 or epoch == 8) and iteration == 0:
+    if (epoch == 8 or epoch == 16) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -259,8 +259,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
