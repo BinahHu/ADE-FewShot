@@ -20,7 +20,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # down sampling rate of segm labe
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
-        self.batch_record_list = []
+        self.batch_record_list = [[], []]
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
@@ -30,7 +30,10 @@ class ImgBaseDataset(BaseBaseDataset):
         while True:
             # get a sample record
             this_sample = self.list_sample[self.cur_idx]
-            self.batch_record_list.append(this_sample)
+            if this_sample['height'] > this_sample['width']:
+                self.batch_record_list[0].append(this_sample)  # h > w, go to 1st class
+            else:
+                self.batch_record_list[1].append(this_sample)  # h <= w, go to 2nd class
 
             # update current sample pointer
             self.cur_idx += 1
@@ -38,11 +41,14 @@ class ImgBaseDataset(BaseBaseDataset):
                 self.cur_idx = 0
                 np.random.shuffle(self.list_sample)
 
-            if len(self.batch_record_list) == self.batch_per_gpu:
-                batch_records = self.batch_record_list
-                self.batch_record_list = []
+            if len(self.batch_record_list[0]) == self.batch_per_gpu:
+                batch_records = self.batch_record_list[0]
+                self.batch_record_list[0] = []
                 break
-
+            elif len(self.batch_record_list[1]) == self.batch_per_gpu:
+                batch_records = self.batch_record_list[1]
+                self.batch_record_list[1] = []
+                break
         return batch_records
 
     def __getitem__(self, index):
@@ -54,49 +60,61 @@ class ImgBaseDataset(BaseBaseDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        this_short_size = 500
+        # resize all images' short edges to the chosen size
+        if isinstance(self.imgSizes, list) or isinstance(self.imgSizes, tuple):
+            this_short_size = np.random.choice(self.imgSizes)
+        else:
+            this_short_size = self.imgSizes
 
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
-        this_scales = np.zeros(self.batch_per_gpu)
+        batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
+        batch_ids = np.zeros(self.batch_per_gpu)
         for i in range(self.batch_per_gpu):
-            height = batch_records[i]['height']
-            width = batch_records[i]['width']
-            this_scale = this_short_size / min(height, width)
-            this_scales[i] = this_scale
-            img_resized_height, img_resized_width = \
-                math.ceil(height * this_scale), math.ceil(width * this_scale)
+            img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
+            this_scale = min(
+                this_short_size / min(img_height, img_width), \
+                self.imgMaxSize / max(img_height, img_width))
+            img_resized_height, img_resized_width = img_height * this_scale, img_width * this_scale
             batch_resized_size[i, :] = img_resized_height, img_resized_width
+        batch_resized_height = np.max(batch_resized_size[:, 0])
+        batch_resized_width = np.max(batch_resized_size[:, 1])
 
-        batch_images = torch.zeros(self.batch_per_gpu, 3, this_short_size, this_short_size)
-        batch_labels = torch.zeros(self.batch_per_gpu).int()
-        batch_boxes = torch.zeros(self.batch_per_gpu, 4).int()
+        # Here we must pad both input image and segmentation map to size h' and w' so that p | h' and p | w'
+        batch_resized_height = int(self.round2nearest_multiple(batch_resized_height, self.padding_constant))
+        batch_resized_width = int(self.round2nearest_multiple(batch_resized_width, self.padding_constant))
+
+        for i in range(self.batch_per_gpu):
+            batch_scales[i, 0] = batch_resized_height / batch_records[i]['height']
+            batch_scales[i, 1] = batch_resized_width / batch_records[i]['width']
+
+        assert self.padding_constant >= self.segm_downsampling_rate, \
+            'padding constant must be equal or large than segm downsamping rate'
+        batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resized_height, batch_resized_width)
+
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
-            anchor = np.array(this_record['anchor'])
-            anchor =(anchor * this_scales[i]).astype(np.int)
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)
-            assert(img.ndim == 3)
+
+            assert (img.ndim == 3)
 
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interp='bilinear')
+
             # image transform
-            img, y, x = self.random_crop(img, size=(this_short_size, this_short_size), box=anchor)
             img = self.img_transform(img)
 
-            batch_images[i][:, :, :] = img
-            batch_labels[i] = this_record['cls_label']
-            batch_boxes[i, :] = torch.tensor(np.array([anchor[0, 1] - y, anchor[0, 0] - x,
-                                         anchor[0, 1] - y + this_short_size, anchor[0, 0] - x + this_short_size]))
+            batch_images[i][:, :img.shape[1], :img.shape[2]] = img
+            batch_ids[i] = this_record[i]['id']
 
         output = dict()
         output['img_data'] = batch_images
-        output['crop_box'] = batch_boxes
-        output['cls_label'] = batch_labels
+        output['scales'] = batch_scales
+        output['ids'] = batch_ids
         return output
 
     def __len__(self):
@@ -116,10 +134,50 @@ class ObjBaseDataset(BaseBaseDataset):
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
+        # organize objects in categories level
+        self.construct_cat_list()
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
+        self.cur_cat = 0
+        self.cur_cat_idx = [0 for _ in range(len(self.cat_sample))]
         self.if_shuffled = False
+    
+    def construct_cat_list(self):
+        cat_map = {}
+        self.cat_sample = []
+        for sample in self.list_sample:
+            cat = sample['cls_label']
+            if cat not in cat_map:
+                cat_map[cat] = len(self.cat_sample)
+                self.cat_sample.append([])
+            self.cat_sample[cat_map[cat]].append(sample)
+        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
+        self.cat_num = len(self.cat_sample)
+    
+    def _get_sub_batch_cat(self):
+        while True:
+            #get a sample record
+            cat = self.cur_cat
+            this_sample = self.cat_sample[cat][self.cur_cat_idx[cat]]
+            self.batch_record_list.append(this_sample)
+            
+            #update current sample pointer
+            self.cur_cat_idx[cat] += 1
+            if self.cur_cat_idx[cat] >= self.cat_sample_num[cat]:
+                self.cur_cat_idx[cat] = 0
+                np.random.shuffle(self.cat_sample[cat])
+            
+            if len(self.batch_record_list) == self.batch_per_gpu:
+                batch_records = self.batch_record_list
+                self.batch_record_list = []
+                # update current category pointer
+                self.cur_cat += 1
+                if self.cur_cat >= self.cat_num:
+                    self.cur_cat = 0
+                    np.random.shuffle(self.cat_sample)
+                break
+        return batch_records
 
     def _get_sub_batch(self):
         while True:
@@ -137,17 +195,20 @@ class ObjBaseDataset(BaseBaseDataset):
                 batch_records = self.batch_record_list
                 self.batch_record_list = []
                 break
-
         return batch_records
 
     def __getitem__(self, index):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
+            np.random.shuffle(self.cat_sample)
+            for cat_list in self.cat_sample:
+                np.random.shuffle(cat_list)
             self.if_shuffled = True
 
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
+        #batch_records = self._get_sub_batch_cat()
 
         this_short_size = 224
         # calculate the BATCH's height and width
@@ -167,6 +228,7 @@ class ObjBaseDataset(BaseBaseDataset):
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
             anchor = this_record['anchor']
+
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])

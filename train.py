@@ -201,7 +201,7 @@ def main(args):
     args.val_logger = Logger('./log_base_val')
 
     # warm up
-    if args.start_epoch == 0:
+    if args.log == '' and args.start_epoch  == 0:
         print('Start Warm Up')
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
         for warm_up_epoch in range(args.warm_up_epoch):
