@@ -61,12 +61,12 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'lr_feat: {:.6f}, lr_cls: {:.6f}, '
-                  'Accuracy: {:4.2f}, Loss: {:.6f}'
+                  'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average()))
-            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.dsip_iter}
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
+            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.disp_iter}
             acc_iter = 0
             for tag, value in info.items():
                 args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
@@ -103,12 +103,13 @@ def validate(module, iterator, history, epoch, args):
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'Accuracy: {:4.2f}'
+                    'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average()))
+                          ave_acc.average(), acc_iter / args.disp_iter))
             
             info = {'acc':ave_acc.average(), 'acc-iter':acc_iter / args.disp_iter}
+            acc_iter = 0
             for tag, value in info.items():
                 args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
 
@@ -139,7 +140,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 2 or epoch == 8) and iteration == 0:
+    if (epoch == 4 or epoch == 8) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -259,8 +260,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
@@ -284,6 +285,7 @@ if __name__ == '__main__':
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')
+
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
