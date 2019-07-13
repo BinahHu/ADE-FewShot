@@ -134,6 +134,10 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
+    if (epoch == 2 or epoch == 8) and iteration == 0:
+        for optimizer in optimizers:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = param_group['lr'] / 10
     return None
 
 
@@ -203,7 +207,7 @@ def main(args):
         for warm_up_epoch in range(args.warm_up_epoch):
             train(network, iterator_train, optimizers, history, warm_up_epoch, args)
             validate(network, iterator_val, history, warm_up_epoch, args, )
-            checkpoint(network, history, args, -args.warm_up_epoch + epoch)
+            checkpoint(network, history, args, -args.warm_up_epoch + warm_up_epoch)
         history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
     # train for real
@@ -250,13 +254,13 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=5.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=5.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
 
     # Warm up
     parser.add_argument('--warm_up_epoch', type=int, default=1)
-    parser.add_argument('--warm_up_factor', default=0.1)
+    parser.add_argument('--warm_up_factor', default=0.001)
     parser.add_argument('--warm_up_iters', default=100)
 
     # Data related arguments
