@@ -130,6 +130,7 @@ class ObjBaseDataset(BaseBaseDataset):
         super(ObjBaseDataset, self).__init__(odgt, opt, **kwargs)
         self.root_dataset = opt.root_dataset
         self.random_flip = opt.random_flip
+        self.mode = opt.sample_type
         # down sampling rate of segm labe
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
@@ -207,8 +208,12 @@ class ObjBaseDataset(BaseBaseDataset):
             self.if_shuffled = True
 
         # get sub-batch candidates
-        batch_records = self._get_sub_batch()
-        #batch_records = self._get_sub_batch_cat()
+        if self.mode == 'inst':
+            batch_records = self._get_sub_batch()
+        elif self.mode == 'cat':
+            batch_records = self._get_sub_batch_cat()
+        else:
+            batch_records = self._get_sub_batch()
 
         this_short_size = 224
         # calculate the BATCH's height and width

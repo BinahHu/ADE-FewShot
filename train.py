@@ -29,6 +29,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
 
     # main loop
     tic = time.time()
+    acc_iter = 0
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -42,6 +43,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss, acc = module(batch_data)
         loss = loss.mean()
         acc = acc.mean()
+        acc_iter += acc.data.item() * 100
 
         # Backward
         loss.backward()
@@ -59,14 +61,18 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'lr_feat: {:.6f}, lr_cls: {:.6f}, '
-                  'Accuracy: {:4.2f}, Loss: {:.6f}'
+                  'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average()))
-            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average()}
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
+            acc_iter = 0
+            dispepoch = epoch
+            if not args.iswarmup:
+                dispepoch += 1
             for tag, value in info.items():
-                args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.train_epoch_iters)
 
 
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
@@ -83,12 +89,14 @@ def validate(module, iterator, history, epoch, args):
     module.eval()
     # main loop
     tic = time.time()
+    acc_iter = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
         _, acc = module(batch_data)
         acc = acc.mean()
+        acc_iter += acc.data.item() * 100
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -98,14 +106,18 @@ def validate(module, iterator, history, epoch, args):
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'Accuracy: {:4.2f}'
+                    'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average()))
+                          ave_acc.average(), acc_iter / args.disp_iter))
             
-            info = {'acc':ave_acc.average()}
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
+            acc_iter = 0
+            dispepoch = epoch
+            if not args.iswarmup:
+                dispepoch += 1
             for tag, value in info.items():
-                args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
@@ -134,7 +146,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 2 or epoch == 8) and iteration == 0:
+    if (epoch == 32 or epoch == 32 or epoch == 32) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -144,7 +156,7 @@ def train_adjust_lr(optimizers, epoch, iteration, args):
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor(arch=args.arch)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -197,18 +209,21 @@ def main(args):
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
         history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.log))
     
-    args.train_logger = Logger('./log_base_train')
-    args.val_logger = Logger('./log_base_val')
+    args.logger = Logger(os.path.join(args.log_dir, args.comment))
+
+    args.iswarmup = False
 
     # warm up
     if args.log == '' and args.start_epoch  == 0:
         print('Start Warm Up')
+        args.iswarmup = True
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
         for warm_up_epoch in range(args.warm_up_epoch):
             train(network, iterator_train, optimizers, history, warm_up_epoch, args)
             validate(network, iterator_val, history, warm_up_epoch, args, )
             checkpoint(network, history, args, -args.warm_up_epoch + warm_up_epoch)
         history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+    args.iswarmup = False
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
@@ -254,9 +269,10 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', default=0.0001)
+    parser.add_argument('--weight_init', default='')
 
     # Warm up
     parser.add_argument('--warm_up_epoch', type=int, default=1)
@@ -279,6 +295,9 @@ if __name__ == '__main__':
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')
+    parser.add_argument('--sample_type', default='inst',
+                        help='instance level or category level sampling')
+
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
@@ -286,6 +305,10 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=10,
                         help='frequency to display')
+    parser.add_argument('--log_dir', default="./log_base/",
+                        help='dir to save train and val log')
+    parser.add_argument('--comment', default="",
+                        help='add comment to this train')
 
     args = parser.parse_args()
 
