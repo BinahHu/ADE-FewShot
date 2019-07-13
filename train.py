@@ -66,10 +66,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
-            info = {'loss':ave_total_loss.average(), 'acc':ave_acc.average(), 'acc-iter': acc_iter / args.disp_iter}
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
             acc_iter = 0
             for tag, value in info.items():
-                args.train_logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + epoch * args.train_epoch_iters)
 
 
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
@@ -108,10 +108,10 @@ def validate(module, iterator, history, epoch, args):
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), acc_iter / args.disp_iter))
             
-            info = {'acc':ave_acc.average(), 'acc-iter':acc_iter / args.disp_iter}
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
             acc_iter = 0
             for tag, value in info.items():
-                args.val_logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
+                args.logger.scalar_summary(tag, value, i + epoch * args.val_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
@@ -204,8 +204,7 @@ def main(args):
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
         history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.log))
     
-    args.train_logger = Logger(os.path.join(args.log_train, args.comment))
-    args.val_logger = Logger(os.path.join(args.log_val, args.comment))
+    args.logger = Logger(os.path.join(args.log_dir, args.comment))
 
     # warm up
     if args.log == '' and args.start_epoch  == 0:
@@ -296,10 +295,8 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=10,
                         help='frequency to display')
-    parser.add_argument('--log_train', default="./log_base_train/",
-                        help='dir to save train log')
-    parser.add_argument('--log_val', default="./log_base_val/",
-                        help='dir to save val log')
+    parser.add_argument('--log_dir', default="./log_base/",
+                        help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
 
