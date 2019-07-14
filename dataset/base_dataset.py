@@ -183,10 +183,6 @@ class ObjBaseDataset(BaseBaseDataset):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
-            # np.random.shuffle(self.cat_sample)
-            # for cat_list in self.cat_sample:
-            #     np.random.shuffle(cat_list)
-            # self.update_sample_num()
             self.if_shuffled = True
 
         # get sub-batch candidates
