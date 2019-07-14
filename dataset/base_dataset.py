@@ -144,46 +144,7 @@ class ObjBaseDataset(BaseBaseDataset):
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
-    """
-    def construct_cat_list(self):
-        cat_map = {}
-        self.cat_sample = []
-        for sample in self.list_sample:
-            cat = sample['cls_label']
-            if cat not in cat_map:
-                cat_map[cat] = len(self.cat_sample)
-                self.cat_sample.append([])
-            self.cat_sample[cat_map[cat]].append(sample)
-        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
-        self.cat_num = len(self.cat_sample)
 
-    def update_sample_num(self):
-        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
-    
-    def _get_sub_batch_cat(self):
-        while True:
-            #get a sample record
-            cat = self.cur_cat
-            this_sample = self.cat_sample[cat][self.cur_cat_idx[cat]]
-            self.batch_record_list.append(this_sample)
-            
-            #update current sample pointer
-            self.cur_cat_idx[cat] += 1
-            if self.cur_cat_idx[cat] >= self.cat_sample_num[cat]:
-                self.cur_cat_idx[cat] = 0
-                np.random.shuffle(self.cat_sample[cat])
-            
-            if len(self.batch_record_list) == self.batch_per_gpu:
-                batch_records = self.batch_record_list
-                self.batch_record_list = []
-                # update current category pointer
-                self.cur_cat += 1
-                if self.cur_cat >= self.cat_num:
-                    self.cur_cat = 0
-                    np.random.shuffle(self.cat_sample)
-                break
-        return batch_records
-    """
     def construct_cat_list(self):
         for sample in self.list_sample:
             category = int(sample['cls_label'])
