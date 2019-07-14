@@ -280,7 +280,7 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
-    parser.add_argument('--weight_decay', default=0.0001)
+    parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--weight_init', default='')
 
     # Warm up
