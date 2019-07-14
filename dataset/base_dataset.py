@@ -180,6 +180,7 @@ class ObjBaseDataset(BaseBaseDataset):
                 if self.cur_cat >= self.cat_num:
                     self.cur_cat = 0
                     np.random.shuffle(self.cat_sample)
+                    self.update_sample_num()
                 break
         return batch_records
 
