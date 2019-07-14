@@ -7,6 +7,7 @@ import torchvision
 from torchvision import transforms
 import numpy as np
 import math
+import random
 
 
 class ImgBaseDataset(BaseBaseDataset):
@@ -136,14 +137,14 @@ class ObjBaseDataset(BaseBaseDataset):
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
         # organize objects in categories level
+        self.num_class = opt.num_class
+        self.cat_list = [[] for i in range(self.num_class)]
         self.construct_cat_list()
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
-        self.cur_cat = 0
-        self.cur_cat_idx = [0 for _ in range(len(self.cat_sample))]
         self.if_shuffled = False
-    
+    """
     def construct_cat_list(self):
         cat_map = {}
         self.cat_sample = []
@@ -182,6 +183,22 @@ class ObjBaseDataset(BaseBaseDataset):
                     np.random.shuffle(self.cat_sample)
                 break
         return batch_records
+    """
+    def construct_cat_list(self):
+        for sample in self.list_sample:
+            category = int(sample['cls_label'])
+            self.cat_list[category].append(sample)
+
+    def _get_sub_batch_cat(self):
+        while True:
+            category = random.randint(0, self.num_class - 1)
+            index = random.randint(0, len(self.cat_list[category]) - 1)
+            self.batch_record_list.append(self.cat_list[category][index])
+            if len(self.batch_record_list) == self.batch_per_gpu:
+                batch_records = self.batch_record_list
+                self.batch_record_list = []
+                break
+        return batch_records
 
     def _get_sub_batch(self):
         while True:
@@ -205,10 +222,10 @@ class ObjBaseDataset(BaseBaseDataset):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
-            np.random.shuffle(self.cat_sample)
-            for cat_list in self.cat_sample:
-                np.random.shuffle(cat_list)
-            self.update_sample_num()
+            # np.random.shuffle(self.cat_sample)
+            # for cat_list in self.cat_sample:
+            #     np.random.shuffle(cat_list)
+            # self.update_sample_num()
             self.if_shuffled = True
 
         # get sub-batch candidates
