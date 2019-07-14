@@ -14,8 +14,9 @@ class Logger(object):
         """Create a summary writer logging to log_dir."""
          # 创建一个指向log文件夹的summary writer
         if os.path.exists(log_dir):
-            for f in os.listdir(log_dir):
-                os.remove(os.path.join(log_dir, f))
+            None
+            #for f in os.listdir(log_dir):
+                #os.remove(os.path.join(log_dir, f))
         else:
             os.makedirs(log_dir)
 
