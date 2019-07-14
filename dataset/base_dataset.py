@@ -7,6 +7,7 @@ import torchvision
 from torchvision import transforms
 import numpy as np
 import math
+import random
 
 
 class ImgBaseDataset(BaseBaseDataset):
@@ -136,51 +137,27 @@ class ObjBaseDataset(BaseBaseDataset):
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
         # organize objects in categories level
+        self.num_class = opt.num_class
+        self.cat_list = [[] for i in range(self.num_class)]
         self.construct_cat_list()
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
-        self.cur_cat = 0
-        self.cur_cat_idx = [0 for _ in range(len(self.cat_sample))]
         self.if_shuffled = False
-    
-    def construct_cat_list(self):
-        cat_map = {}
-        self.cat_sample = []
-        for sample in self.list_sample:
-            cat = sample['cls_label']
-            if cat not in cat_map:
-                cat_map[cat] = len(self.cat_sample)
-                self.cat_sample.append([])
-            self.cat_sample[cat_map[cat]].append(sample)
-        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
-        self.cat_num = len(self.cat_sample)
 
-    def update_sample_num(self):
-        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
-    
+    def construct_cat_list(self):
+        for sample in self.list_sample:
+            category = int(sample['cls_label'])
+            self.cat_list[category].append(sample)
+
     def _get_sub_batch_cat(self):
         while True:
-            #get a sample record
-            cat = self.cur_cat
-            this_sample = self.cat_sample[cat][self.cur_cat_idx[cat]]
-            self.batch_record_list.append(this_sample)
-            
-            #update current sample pointer
-            self.cur_cat_idx[cat] += 1
-            if self.cur_cat_idx[cat] >= self.cat_sample_num[cat]:
-                self.cur_cat_idx[cat] = 0
-                np.random.shuffle(self.cat_sample[cat])
-            
+            category = random.randint(0, self.num_class - 1)
+            index = random.randint(0, len(self.cat_list[category]) - 1)
+            self.batch_record_list.append(self.cat_list[category][index])
             if len(self.batch_record_list) == self.batch_per_gpu:
                 batch_records = self.batch_record_list
                 self.batch_record_list = []
-                # update current category pointer
-                self.cur_cat += 1
-                if self.cur_cat >= self.cat_num:
-                    self.cur_cat = 0
-                    np.random.shuffle(self.cat_sample)
-                    self.update_sample_num()
                 break
         return batch_records
 
@@ -206,10 +183,6 @@ class ObjBaseDataset(BaseBaseDataset):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
-            np.random.shuffle(self.cat_sample)
-            for cat_list in self.cat_sample:
-                np.random.shuffle(cat_list)
-            self.update_sample_num()
             self.if_shuffled = True
 
         # get sub-batch candidates
@@ -246,9 +219,10 @@ class ObjBaseDataset(BaseBaseDataset):
             assert (img.ndim == 3)
 
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
+            # img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_CUBIC)
             # image transform
-            img = self.random_crop(img)[0]
+            # img = self.random_crop(img)[0]
             img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img
