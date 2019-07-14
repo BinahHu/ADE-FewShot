@@ -142,22 +142,27 @@ class ObjBaseDataset(BaseBaseDataset):
         self.cat_list = [[] for i in range(self.num_class)]
         self.cat_length = np.zeros(self.num_class)
         self.cat_weight = np.zeros(self.num_class)
-        self.construct_cat_list()
+        self.construct_cat_list(opt)
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
 
-    def construct_cat_list(self):
-        def weight_function(x):
-            return 1 / math.sqrt(x)
+    def construct_cat_list(self, args):
+        def weight_function(x, args):
+            if args.sample_type == 'cat_sqrt':
+                return math.sqrt(x)
+            elif args.sample_type == 'cat_equal':
+                return 1
+            elif args.sample_type == 'inst':
+                return x
         for sample in self.list_sample:
             category = int(sample['cls_label'])
             self.cat_list[category].append(sample)
 
         for i in range(self.num_class):
             self.cat_length[i] = len(self.cat_list[i])
-            self.cat_weight[i] = weight_function(self.cat_length[i])
+            self.cat_weight[i] = weight_function(self.cat_length[i], args)
         weight_sum = np.sum(self.cat_weight)
         for i in range(self.num_class):
             self.cat_weight[i] = self.cat_weight[i] / weight_sum
