@@ -30,6 +30,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0 
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -44,6 +45,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss = loss.mean()
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1 
 
         # Backward
         loss.backward()
@@ -65,9 +67,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -90,6 +93,7 @@ def validate(module, iterator, history, epoch, args):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -97,6 +101,7 @@ def validate(module, iterator, history, epoch, args):
         _, acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -109,10 +114,11 @@ def validate(module, iterator, history, epoch, args):
                     'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average(), acc_iter / args.disp_iter))
+                          ave_acc.average(), acc_iter / acc_iter_num))
             
-            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
