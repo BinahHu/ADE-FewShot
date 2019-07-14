@@ -127,6 +127,8 @@ def validate(module, iterator, history, epoch, args):
 
 def checkpoint(nets, history, args, epoch_num):
     print('Saving checkpoints to {}...'.format(args.ckpt))
+    if not os.path.exists(args.ckpt):
+        os.makedirs(args.ckpt)
     suffix_latest = 'epoch_{}.pth'.format(epoch_num)
 
     torch.save(history,
