@@ -6,6 +6,7 @@ import cv2
 import torchvision
 from torchvision import transforms
 import numpy as np
+from numpy.random import choice
 import math
 import random
 
@@ -139,6 +140,8 @@ class ObjBaseDataset(BaseBaseDataset):
         # organize objects in categories level
         self.num_class = opt.num_class
         self.cat_list = [[] for i in range(self.num_class)]
+        self.cat_length = np.zeros(self.num_class)
+        self.cat_weight = np.zeros(self.num_class)
         self.construct_cat_list()
 
         # override dataset length when trainig with batch_per_gpu > 1
@@ -146,19 +149,28 @@ class ObjBaseDataset(BaseBaseDataset):
         self.if_shuffled = False
 
     def construct_cat_list(self):
+        def weight_function(x):
+            return 1 / math.sqrt(x)
         for sample in self.list_sample:
             category = int(sample['cls_label'])
             self.cat_list[category].append(sample)
 
+        for i in range(self.num_class):
+            self.cat_length[i] = len(self.cat_list[i])
+            self.cat_weight[i] = weight_function(self.cat_length[i])
+        weight_sum = np.sum(self.cat_weight)
+        for i in range(self.num_class):
+            self.cat_weight[i] = self.cat_weight[i] / weight_sum
+
     def _get_sub_batch_cat(self):
-        while True:
-            category = random.randint(0, self.num_class - 1)
-            index = random.randint(0, len(self.cat_list[category]) - 1)
-            self.batch_record_list.append(self.cat_list[category][index])
-            if len(self.batch_record_list) == self.batch_per_gpu:
-                batch_records = self.batch_record_list
-                self.batch_record_list = []
-                break
+        batch_records = []
+        sample_categories = choice(np.arange(self.num_class).astype(np.int),
+                                   self.batch_per_gpu,
+                                   p=self.cat_weight,
+                                   replace=False)
+        for sample_category in sample_categories:
+            length = len(self.cat_list[sample_category])
+            batch_records.append(self.cat_list[sample_category][random.randint(0, length - 1)])
         return batch_records
 
     def _get_sub_batch(self):
