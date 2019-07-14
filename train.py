@@ -68,7 +68,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.acc_iter_num}
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
             acc_iter = 0
             acc_iter_num = 0
             dispepoch = epoch
@@ -154,6 +154,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
+    return None
     if (epoch == 15 or epoch == 30 or epoch == 45) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
