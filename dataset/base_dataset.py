@@ -121,7 +121,7 @@ class ImgBaseDataset(BaseBaseDataset):
         return int(1e10) # It's a fake length due to the trick that every loader maintains its own list
         #return self.num_sampleclass
 
-
+        
 class ObjBaseDataset(BaseBaseDataset):
     """
     Form batch at object level
