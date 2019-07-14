@@ -155,6 +155,9 @@ class ObjBaseDataset(BaseBaseDataset):
             self.cat_sample[cat_map[cat]].append(sample)
         self.cat_sample_num = [len(cat) for cat in self.cat_sample]
         self.cat_num = len(self.cat_sample)
+
+    def update_sample_num(self):
+        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
     
     def _get_sub_batch_cat(self):
         while True:
@@ -205,6 +208,7 @@ class ObjBaseDataset(BaseBaseDataset):
             np.random.shuffle(self.cat_sample)
             for cat_list in self.cat_sample:
                 np.random.shuffle(cat_list)
+            self.update_sample_num()
             self.if_shuffled = True
 
         # get sub-batch candidates
