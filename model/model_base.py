@@ -45,24 +45,28 @@ class LearningModuleBase(nn.Module):
     def forward(self, x):
         raise NotImplementedError
 
-    def _acc(self, pred, label):
+    def _acc(self, pred, label, output='dumb'):
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
         acc_sum = torch.sum(valid * (preds == label).long())
         instance_sum = torch.sum(valid)
         acc = acc_sum.float() / (instance_sum.float() + 1e-10)
-        return acc
+        if output == 'dumb':
+            return acc
+        else:
+            return acc, pred, label
 
 
 class LearningModule(LearningModuleBase):
-    def __init__(self, feature_extractor, crit, cls=None, seg=None):
+    def __init__(self, feature_extractor, crit, cls=None, seg=None, output='dumb'):
         super(LearningModule, self).__init__()
         self.feature_extractor = feature_extractor
         self.cls = cls
         self.seg = seg
         self.crit = crit
+        self.output = output
 
-    def forward(self, feed_dict, mode='train'):
+    def forward(self, feed_dict, mode='train', output='dumb'):
         feature_map = self.feature_extractor(feed_dict['img_data'])
         acc = 0
         loss = 0
@@ -74,9 +78,15 @@ class LearningModule(LearningModuleBase):
                 pred = self.cls(feature_map)
 
             loss += crit['weight'] * crit['crit'](pred, label)
-            acc += self._acc(pred, label)
-
-        return loss, acc
+            if self.output == 'dumb':
+                acc += self._acc(pred, label, self.output)
+            else:
+                acc_iter, preds, labels = self._acc(pred, label, self.output)
+                acc += acc_iter
+        if self.output == 'dumb':
+            return loss, acc
+        else:
+            return loss, acc, preds, labels
 
 
 class NovelTuningModuleBase(nn.Module):
