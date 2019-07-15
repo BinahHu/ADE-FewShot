@@ -157,6 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
+    return None
     if (epoch == 8 or epoch == 16 or epoch == 24) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
@@ -327,7 +328,7 @@ if __name__ == '__main__':
                         help='frequency to display')
     parser.add_argument('--log_dir', default="./log_base/",
                         help='dir to save train and val log')
-    parser.add_argument('--comment', default="",
+    parser.add_argument('--comment', default="this_child_may_save_the_world",
                         help='add comment to this train')
 
     args = parser.parse_args()

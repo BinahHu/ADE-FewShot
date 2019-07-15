@@ -14,6 +14,8 @@ from utils import AverageMeter, parse_devices
 from model.parallel.replicate import patch_replication_callback
 from model.model_base import ModelBuilder, NovelTuningModule, LearningModule
 
+from logger import Logger
+
 
 def train(module, iterator, optimizers, history, epoch, args):
     batch_time = AverageMeter()
@@ -25,6 +27,8 @@ def train(module, iterator, optimizers, history, epoch, args):
 
     # main loop
     tic = time.time()
+    acc_iter = 0
+    acc_iter_num = 0 
     for i in range(args.train_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -33,6 +37,8 @@ def train(module, iterator, optimizers, history, epoch, args):
         loss, acc = module(batch_data)
         loss = loss.mean()
         acc = acc.mean()
+        acc_iter += acc.data.item() * 100
+        acc_iter_num += 1 
 
         # Backward
         loss.backward()
@@ -50,11 +56,17 @@ def train(module, iterator, optimizers, history, epoch, args):
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                   'lr_feat: {:.6f}, lr_cls: {:.6f}, '
-                  'Accuracy: {:4.2f}, Loss: {:.6f}'
+                  'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           args.lr_feat, args.lr_cls,
-                          ave_acc.average(), ave_total_loss.average()))
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
+            acc_iter = 0
+            acc_iter_num = 0
+            dispepoch = epoch
+            for tag, value in info.items():
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.train_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
             history['train']['epoch'].append(fractional_epoch)
@@ -70,12 +82,16 @@ def validate(module, iterator, history, epoch, args):
     module.eval()
     # main loop
     tic = time.time()
+    acc_iter = 0
+    acc_iter_num = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
         _, acc = module(batch_data)
         acc = acc.mean()
+        acc_iter += acc.data.item() * 100
+        acc_iter_num += 1
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -85,10 +101,17 @@ def validate(module, iterator, history, epoch, args):
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'Accuracy: {:4.2f}'
+                    'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average()))
+                          ave_acc.average(), acc_iter / acc_iter_num))
+                  
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
+            acc_iter = 0
+            acc_iter_num = 0
+            dispepoch = epoch
+            for tag, value in info.items():
+                args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
 
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
@@ -145,6 +168,8 @@ def main(args):
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
+    
+    args.logger = Logger(os.path.join(args.log_dir, args.comment))
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=args.lr_feat, momentum=0.5)
@@ -226,6 +251,10 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
+    parser.add_argument('--log_dir', default="./log_novel/",
+                        help='dir to save train and val log')
+    parser.add_argument('--comment', default="this_child_may_save_the_world",
+                        help='add comment to this test')
 
     args = parser.parse_args()
 
