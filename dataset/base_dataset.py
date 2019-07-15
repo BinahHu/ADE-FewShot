@@ -139,10 +139,11 @@ class ObjBaseDataset(BaseBaseDataset):
         self.batch_record_list = []
         # organize objects in categories level
         self.num_class = opt.num_class
-        self.cat_list = [[] for i in range(self.num_class)]
-        self.cat_length = np.zeros(self.num_class)
-        self.cat_weight = np.zeros(self.num_class)
-        self.construct_cat_list(opt)
+        if self.mode is not 'inst':
+            self.cat_list = [[] for i in range(self.num_class)]
+            self.cat_length = np.zeros(self.num_class)
+            self.cat_weight = np.zeros(self.num_class)
+            self.construct_cat_list(opt)
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0

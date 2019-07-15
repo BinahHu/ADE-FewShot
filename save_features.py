@@ -14,9 +14,22 @@ import math
 def save_feature(args):
     # Network Builders
     builder = ModelBuilder()
+    feature_extractor_ = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
+    fc_classifier_ = builder.build_classification_layer(args)
+    network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
+    network_ = UserScatteredDataParallel(network_)
+    patch_replication_callback(network_)
+    network_.load_state_dict(torch.load('ckpt/sqrt_balance_2/net_epoch_24.pth'))
+    torch.save(network_.module.state_dict(), 'tmp.pth')
+
+    print('Real Loading Start')
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier = builder.build_classification_layer(args)
     network = LearningModule(feature_extractor, crit=[], cls=fc_classifier, output='feat')
+    network.load_state_dict(torch.load('tmp.pth'))
+    network = UserScatteredDataParallel(network, device_ids=args.gpus)
+    patch_replication_callback(network)
+    network.cuda()
     network.eval()
 
     dataset_train = ObjBaseDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
@@ -45,15 +58,11 @@ def save_feature(args):
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
-    network = UserScatteredDataParallel(network, device_ids=args.gpus)
-    patch_replication_callback(network)
-    network.cuda()
-
     iterations = 0
     while iterations <= dataset_train.num_sample:
         batch_data = next(iter_train)
-        if iterations % 1 == 0:
-            print(iterations)
+        if iterations % 10 == 0:
+            print('{} / {}'.format(iterations, dataset_train.num_sample))
         if iterations == 0:
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
@@ -79,8 +88,8 @@ def save_feature(args):
     iterations = 0
     while iterations <= dataset_val.num_sample:
         batch_data = next(iter_val)
-        if iterations % 1 == 0:
-            print(iterations)
+        if iterations % 10 == 0:
+            print('{} / {}'.format(iterations, dataset_val.num_sample))
         if iterations == 0:
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
@@ -123,9 +132,9 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=64, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=1, type=int,
                         help='input batch size')
     parser.add_argument('--train_epoch_iters', default=20, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
@@ -134,7 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=293)
+    parser.add_argument('--num_class', default=189)
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],

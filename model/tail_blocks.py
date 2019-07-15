@@ -14,3 +14,14 @@ class FC_Classifier(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return x
+
+    def _acc(self, pred, label, output='dumb'):
+        _, preds = torch.max(pred, dim=1)
+        valid = (label >= 0).long()
+        acc_sum = torch.sum(valid * (preds == label).long())
+        instance_sum = torch.sum(valid)
+        acc = acc_sum.float() / (instance_sum.float() + 1e-10)
+        if output == 'dumb':
+            return acc
+        elif output == 'vis':
+            return acc, pred, label
