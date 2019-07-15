@@ -27,14 +27,17 @@ class ModelBuilder():
         feature_extractor.apply(self.weights_init)
         if len(weights) > 0:
             print('Loading weights for feature extractor')
-            print('load weights here')
             feature_extractor.load_state_dict(
-                torch.load(weights, map_location=lambda storage, loc:storage), strict=False)
+                torch.load(weights, map_location=lambda storage, loc: storage), strict=False)
         return feature_extractor
 
     def build_classification_layer(self, args):
         classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
         classifier.apply(self.weights_init)
+        if len(args.weight_init) > 0:
+            print('Loading weights for classifier')
+            classifier.load_state_dict(
+                torch.load(args.weight_init, map_location=lambda storage, loc: storage), strict=False)
         return classifier
 
 
@@ -53,7 +56,7 @@ class LearningModuleBase(nn.Module):
         acc = acc_sum.float() / (instance_sum.float() + 1e-10)
         if output == 'dumb':
             return acc
-        else:
+        elif output == 'vis':
             return acc, pred, label
 
 
@@ -85,8 +88,10 @@ class LearningModule(LearningModuleBase):
                 acc += acc_iter
         if self.output == 'dumb':
             return loss, acc
-        else:
+        elif self.output == 'vis':
             return loss, acc, preds, labels
+        elif self.output == 'feat':
+            return feature_map, feed_dict['cls_label']
 
 
 class NovelTuningModuleBase(nn.Module):
