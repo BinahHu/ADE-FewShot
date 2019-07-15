@@ -4,6 +4,7 @@ import random
 import argparse
 import json
 import math
+import copy
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,8 @@ from utils import  AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
+
+from loss.focal import FocalLoss
 
 from logger import Logger
 
@@ -167,7 +170,13 @@ def main(args):
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier = builder.build_classification_layer(args)
 
-    crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    if args.loss == 'CE':
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    elif args.loss == 'Focal':
+        crit_cls = FocalLoss(class_num = args.num_class, dev_num = len(args.gpus))
+    else:
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
@@ -181,8 +190,10 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
+    valargs = copy.deepcopy(args)
+    valargs.sample_type = 'inst'    # always use instance level sampling on val set
     dataset_val = ObjBaseDataset(
-        args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+        args.list_val, valargs, batch_per_gpu=args.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -255,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
+    parser.add_argument('--loss', default='CE', help='specific the training loss')
 
     # Path related arguments
     parser.add_argument('--list_train',
