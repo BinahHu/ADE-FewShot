@@ -218,7 +218,9 @@ def main(args):
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+
     network = LearningModule(feature_extractor, crit, fc_classifier)
+    network.load_state_dict(torch.load('tmp.pth'))
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -227,6 +229,9 @@ def main(args):
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
         history = torch.load('{}/history_epoch_{}.pth'.format(args.ckpt, args.log))
+
+    if args.weight_init != '':
+        network.load_state_dict(torch.load(args.weight_init))
     
     args.logger = Logger(os.path.join(args.log_dir, args.comment))
 

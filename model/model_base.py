@@ -4,6 +4,7 @@ from model.feature_extractor import LeNet
 from model.tail_blocks import FC_Classifier
 from model.resnet import resnet18
 import math
+import numpy as np
 
 
 class ModelBuilder():
@@ -44,11 +45,13 @@ class ModelBuilder():
 class LearningModuleBase(nn.Module):
     def __init__(self):
         super(LearningModuleBase, self).__init__()
+        self.range_of_compute = 1
 
     def forward(self, x):
         raise NotImplementedError
 
     def _acc(self, pred, label, output='dumb'):
+        """
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
         acc_sum = torch.sum(valid * (preds == label).long())
@@ -58,6 +61,16 @@ class LearningModuleBase(nn.Module):
             return acc
         elif output == 'vis':
             return acc, pred, label
+        """
+        acc_sum = 0
+        preds = torch.argsort(pred)
+        num = preds.shape[0]
+        for i in range(num):
+            if label[i] in preds[i, -self.range_of_compute:]:
+                acc_sum += 1
+        acc = acc_sum.float() / (num.float() + 1e-10)
+        return acc
+
 
 
 class LearningModule(LearningModuleBase):
@@ -111,29 +124,22 @@ class NovelTuningModuleBase(nn.Module):
 
 
 class NovelTuningModule(NovelTuningModuleBase):
-    def __init__(self, feature_extractor, crit, cls=None, seg=None):
+    def __init__(self, crit, cls=None, seg=None):
         super(NovelTuningModule, self).__init__()
-        self.feature_extractor = feature_extractor
-        for param in feature_extractor.parameters():
-            param.requires_grad = False
         self.cls = cls
         self.seg = seg
         self.crit = crit
 
     def forward(self, feed_dict):
-        feature_map = self.feature_extractor(feed_dict['img_data'])
-        if 'crop_box' in feed_dict.keys():
-            box = feed_dict['crop_box']
-            feature_map = feature_map[math.floor(box[0]/32): math.ceil(box[2]/32),
-                          math.floor(box[1]):math.ceil(box[3])]
         acc = 0
         loss = 0
         for crit in self.crit:
             if crit['weight'] == 0:
                 continue
-            label = feed_dict['{type}_label'.format(type=crit['type'])].long()
+            label = feed_dict['label'].long()
+            feature = feed_dict['feature']
             if crit['type'] == 'cls':
-                pred = self.cls(feature_map)
+                pred = self.cls(feature)
 
             loss += crit['weight'] * crit['crit'](pred, label)
             acc += self._acc(pred, label)
