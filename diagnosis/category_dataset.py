@@ -28,6 +28,7 @@ class ObjCategoryDataset(BaseBaseDataset):
         for sample in self.list_sample:
             if sample['cls_label'] == self.category:
                 self.category_list.append(sample)
+        self.num_sample = len(self.category_list)
     
     def _get_sub_batch(self):
         while True:
