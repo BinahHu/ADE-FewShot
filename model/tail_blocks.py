@@ -65,7 +65,8 @@ class FC_Classifier2(nn.Module):
         self.type = 'fc_cls2'
 
     def forward(self, x):
-        x = self.fc1(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
         return x
 
     def _acc(self, pred, label, output='dumb'):
