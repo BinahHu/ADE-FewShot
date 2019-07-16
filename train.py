@@ -4,6 +4,7 @@ import random
 import argparse
 import json
 import math
+import copy
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,8 @@ from utils import  AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
+
+from loss.focal import FocalLoss
 
 from logger import Logger
 
@@ -30,6 +33,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0 
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -44,6 +48,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss = loss.mean()
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1 
 
         # Backward
         loss.backward()
@@ -65,9 +70,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -90,6 +96,7 @@ def validate(module, iterator, history, epoch, args):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -97,6 +104,7 @@ def validate(module, iterator, history, epoch, args):
         _, acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -109,10 +117,11 @@ def validate(module, iterator, history, epoch, args):
                     'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average(), acc_iter / args.disp_iter))
+                          ave_acc.average(), acc_iter / acc_iter_num))
             
-            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -161,7 +170,13 @@ def main(args):
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier = builder.build_classification_layer(args)
 
-    crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    if args.loss == 'CE':
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    elif args.loss == 'Focal':
+        crit_cls = FocalLoss(class_num = args.num_class, dev_num = len(args.gpus))
+    else:
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
@@ -175,8 +190,10 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
+    valargs = copy.deepcopy(args)
+    valargs.sample_type = 'inst'    # always use instance level sampling on val set
     dataset_val = ObjBaseDataset(
-        args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+        args.list_val, valargs, batch_per_gpu=args.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -250,6 +267,7 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
+    parser.add_argument('--loss', default='CE', help='specific the training loss')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -272,9 +290,9 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=5.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=5.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--weight_decay', default=0.0001)
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--weight_init', default='')
 
     # Warm up
