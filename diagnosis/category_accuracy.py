@@ -68,6 +68,7 @@ def main(args):
 
     accuracy = np.zeros(args.num_class)
     dataset_val = ObjBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val.mode = 'val'
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
