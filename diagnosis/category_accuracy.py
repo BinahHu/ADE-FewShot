@@ -100,9 +100,9 @@ def main(args):
         label = int(label)
         occurence[label] += 1
         if label in preds[index, -5:]:
-            accuracy_top_5 += 1
+            accuracy_top_5[label] += 1
         if label in preds[index, -1:]:
-            accuracy_top_1 += 1
+            accuracy_top_1[label] += 1
     for i in range(args.num_class):
         accuracy_top_1[i] = accuracy_top_1[i] / occurence[i]
         accuracy_top_5[i] = accuracy_top_5[i] / occurence[i]
