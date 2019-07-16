@@ -33,7 +33,9 @@ def save_feature(args):
     network.eval()
 
     dataset_train = ObjBaseDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_train.mode = 'val'
     dataset_val = ObjBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val.mode = 'val'
     dataloader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
