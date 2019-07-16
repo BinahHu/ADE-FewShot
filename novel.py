@@ -198,7 +198,7 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_cls', default=3.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
