@@ -2,13 +2,15 @@ import os
 import json
 import torch
 from dataset.dataset_base import BaseBaseDataset
-import cv2
+from PIL import Image
+import PIL
 import torchvision
 from torchvision import transforms
 import numpy as np
 from numpy.random import choice
 import math
 import random
+import cv2
 
 
 class ImgBaseDataset(BaseBaseDataset):
@@ -100,12 +102,12 @@ class ImgBaseDataset(BaseBaseDataset):
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            img = cv2.imread(image_path)
 
             assert (img.ndim == 3)
 
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interp='bilinear')
+            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interpolation=cv2.INTER_CUBIC)
 
             # image transform
             img = self.img_transform(img)
@@ -139,10 +141,11 @@ class ObjBaseDataset(BaseBaseDataset):
         self.batch_record_list = []
         # organize objects in categories level
         self.num_class = opt.num_class
-        self.cat_list = [[] for i in range(self.num_class)]
-        self.cat_length = np.zeros(self.num_class)
-        self.cat_weight = np.zeros(self.num_class)
-        self.construct_cat_list(opt)
+        if self.mode is not 'inst':
+            self.cat_list = [[] for i in range(self.num_class)]
+            self.cat_length = np.zeros(self.num_class)
+            self.cat_weight = np.zeros(self.num_class)
+            self.construct_cat_list(opt)
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
@@ -232,12 +235,12 @@ class ObjBaseDataset(BaseBaseDataset):
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-            img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
-            assert (img.ndim == 3)
+            img = Image.open(image_path)
+            img = img.crop((anchor[0][0], anchor[0][1], anchor[1][0], anchor[1][1]))
 
             # note that each sample within a mini batch has different scale param
             # img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
-            img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_CUBIC)
+            img = img.resize((256, 256), resample=PIL.Image.BICUBIC)
             # image transform
             # img = self.random_crop(img)[0]
             img = self.img_transform(img)
