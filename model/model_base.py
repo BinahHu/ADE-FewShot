@@ -35,10 +35,6 @@ class ModelBuilder():
     def build_classification_layer(self, args):
         classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
         classifier.apply(self.weights_init)
-        if len(args.weight_init) > 0:
-            print('Loading weights for classifier')
-            classifier.load_state_dict(
-                torch.load(args.weight_init, map_location=lambda storage, loc: storage), strict=False)
         return classifier
 
 
@@ -51,7 +47,6 @@ class LearningModuleBase(nn.Module):
         raise NotImplementedError
 
     def _acc(self, pred, label, output='dumb'):
-        """
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
         acc_sum = torch.sum(valid * (preds == label).long())
@@ -63,13 +58,15 @@ class LearningModuleBase(nn.Module):
             return acc, pred, label
         """
         acc_sum = 0
-        preds = torch.argsort(pred)
-        num = preds.shape[0]
+        num = pred.shape[0]
+        preds = np.array(pred.detach().cpu())
+        preds = np.argsort(preds)
         for i in range(num):
             if label[i] in preds[i, -self.range_of_compute:]:
                 acc_sum += 1
-        acc = acc_sum.float() / (num.float() + 1e-10)
+        acc = acc_sum / (num + 1e-10)
         return acc
+        """
 
 
 
@@ -110,16 +107,28 @@ class LearningModule(LearningModuleBase):
 class NovelTuningModuleBase(nn.Module):
     def __init__(self):
         super(NovelTuningModuleBase, self).__init__()
+        self.range_of_compute = 5
 
     def forward(self, x):
         raise NotImplementedError
 
     def _acc(self, pred, label):
+        """
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
         acc_sum = torch.sum(valid * (preds == label).long())
         instance_sum = torch.sum(valid)
         acc = acc_sum.float() / (instance_sum.float() + 1e-10)
+        """
+
+        acc_sum = 0
+        num = pred.shape[0]
+        preds = np.array(pred.detach().cpu())
+        preds = np.argsort(preds)
+        for i in range(num):
+            if label[i] in preds[i, -self.range_of_compute:]:
+                acc_sum += 1
+        acc = torch.tensor(acc_sum / (num + 1e-10)).cuda()
         return acc
 
 
