@@ -133,6 +133,7 @@ class BaseBaseDataset(Dataset):
 
         # parse the input list
         self.parse_input_list(odgt, **kwargs)
+        self.mode = None
 
         # mean and std
         self.normalize = transforms.Normalize(
@@ -193,6 +194,8 @@ class BaseBaseDataset(Dataset):
     def img_transform(self, img):
         # image to float
         img = img.astype(np.float32)
+        if self.mode == 'train':
+            img = self.random_crop(img)[0]
         img = img.transpose((2, 0, 1))
         img = self.normalize(torch.from_numpy(img.copy()))
         return img

@@ -183,6 +183,7 @@ def main(args):
 
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_train.mode = 'train'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -194,6 +195,7 @@ def main(args):
     valargs.sample_type = 'inst'    # always use instance level sampling on val set
     dataset_val = ObjBaseDataset(
         args.list_val, valargs, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val.mode = 'val'
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
