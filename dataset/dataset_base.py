@@ -12,7 +12,6 @@ import h5py
 
 class Dataset(object):
     """An abstract class representing a Dataset.
-
     All other datasets should subclass it. All subclasses should override
     ``__len__``, that provides the size of the dataset, and ``__getitem__``,
     supporting integer indexing in range from 0 to len(self) exclusive.
@@ -30,10 +29,8 @@ class Dataset(object):
 
 class TensorDataset(Dataset):
     """Dataset wrapping data and target tensors.
-
     Each sample will be retrieved by indexing both tensors along the first
     dimension.
-
     Arguments:
         data_tensor (Tensor): contains sample data.
         target_tensor (Tensor): contains sample targets (labels).
@@ -57,7 +54,6 @@ class ConcatDataset(Dataset):
     Purpose: useful to assemble different existing datasets, possibly
     large-scale datasets as the concatenation operation is done in an
     on-the-fly manner.
-
     Arguments:
         datasets (iterable): List of datasets to be concatenated
     """
@@ -111,7 +107,6 @@ def random_split(dataset, lengths):
     """
     Randomly split a dataset into non-overlapping new datasets of given lengths
     ds
-
     Arguments:
         dataset (Dataset): Dataset to be split
         lengths (iterable): lengths of splits to be produced
@@ -133,16 +128,12 @@ class BaseBaseDataset(Dataset):
 
         # parse the input list
         self.parse_input_list(odgt, **kwargs)
+        self.mode = None
 
         # mean and std
-        self.transforms = transforms.Compose([
-            transforms.RandomCrop((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[122.7717, 115.9465, 102.9801],
-                std=[1., 1., 1.])
-        ])
+        self.normalize = transforms.Normalize(
+            mean=[102.9801, 115.9465, 122.7717],
+            std=[1., 1., 1.])
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
         if isinstance(odgt, list):
@@ -197,7 +188,11 @@ class BaseBaseDataset(Dataset):
 
     def img_transform(self, img):
         # image to float
-        img = self.transforms(img)
+        img = img.astype(np.float32)
+        if self.mode == 'train':
+            img = self.random_crop(img)[0]
+        img = img.transpose((2, 0, 1))
+        img = self.normalize(torch.from_numpy(img.copy()))
         return img
 
     # Round x to the nearest multiple of p and x' >= x
