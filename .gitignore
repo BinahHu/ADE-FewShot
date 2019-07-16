@@ -8,3 +8,4 @@ ckpt*/
 */*.swp
 log*/
 model/prtrain/
+run.sh
