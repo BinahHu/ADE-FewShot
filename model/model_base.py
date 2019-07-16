@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
-from model.tail_blocks import FC_Classifier
+from model.tail_blocks import FC_Classifier, FC_Classifier2, distLinear
 from model.resnet import resnet18
 import math
 import numpy as np
@@ -35,6 +35,8 @@ class ModelBuilder():
     def build_classification_layer(self, args):
         if args.cls == 'linear':
             classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
+        if args.cls == 'linear2':
+            classifier = FC_Classifier2(args.feat_dim, 256, args.num_class)
         elif args.cls == 'cos':
             classifier = FC_Classifier(args.feat_dim, args.num_class)
         else:
