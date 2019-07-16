@@ -20,8 +20,6 @@ def validate(module, iterator, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_acc = AverageMeter()
-
-    module.eval()
     # main loop
     tic = time.time()
     for i in range(args.val_epoch_iters):
@@ -59,7 +57,7 @@ def validate(module, iterator, epoch, args):
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.model_weight)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -86,25 +84,35 @@ def main(args):
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
+    network.load_state_dict(torch.load(args.weight_init))
     network.eval()
 
     preds, labels = validate(network, iterator_val, 1, args)
-    labels = np.reshape(labels.size())
+    preds = preds[:dataset_val.num_sample, :]
+    preds = np.argsort(preds)
+    labels = labels[:dataset_val.num_sample]
+    labels = np.reshape(labels, labels.size)
     occurence = np.zeros(args.num_class)
     accuracy_top_1 = np.zeros(args.num_class)
     accuracy_top_5 = np.zeros(args.num_class)
-    for index, label in labels:
+    for index, label in enumerate(labels):
         label = int(label)
         occurence[label] += 1
-        pred = preds[index]
-        if np.argmax(pred) == label:
-            accuracy_top_1[label] += 1
+        if label in preds[index, -5:]:
+            accuracy_top_5 += 1
+        if label in preds[index, -1:]:
+            accuracy_top_1 += 1
     for i in range(args.num_class):
         accuracy_top_1[i] = accuracy_top_1[i] / occurence[i]
+        accuracy_top_5[i] = accuracy_top_5[i] / occurence[i]
 
     print('Evaluation Done')
     f = open('top1-accuracy.json', 'w')
-    json.dump(accuracy_top_1, f)
+    json.dump(accuracy_top_1.tolist(), f)
+    f.close()
+    f = open('top5-accuracy.json', 'w')
+    json.dump(accuracy_top_5.tolist(), f)
+    f.close()
 
 
 if __name__ == '__main__':
@@ -114,7 +122,7 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--model_weight', default=None)
+    parser.add_argument('--weight_init', default='')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -125,9 +133,9 @@ if __name__ == '__main__':
                         default='../../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=32, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=5, type=int,
                         help='epochs to test')
@@ -136,7 +144,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=4, type=int,
+    parser.add_argument('--workers', default=32, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
