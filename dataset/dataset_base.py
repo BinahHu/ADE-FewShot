@@ -135,9 +135,14 @@ class BaseBaseDataset(Dataset):
         self.parse_input_list(odgt, **kwargs)
 
         # mean and std
-        self.normalize = transforms.Normalize(
-            mean=[102.9801, 115.9465, 122.7717],
-            std=[1., 1., 1.])
+        self.transforms = transforms.Compose([
+            transforms.RandomCrop((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[122.7717, 115.9465, 102.9801],
+                std=[1., 1., 1.])
+        ])
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
         if isinstance(odgt, list):
@@ -192,9 +197,7 @@ class BaseBaseDataset(Dataset):
 
     def img_transform(self, img):
         # image to float
-        img = img.astype(np.float32)
-        img = img.transpose((2, 0, 1))
-        img = self.normalize(torch.from_numpy(img.copy()))
+        img = self.transforms(img)
         return img
 
     # Round x to the nearest multiple of p and x' >= x
