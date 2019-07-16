@@ -33,7 +33,12 @@ class ModelBuilder():
         return feature_extractor
 
     def build_classification_layer(self, args):
-        classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
+        if args.cls == 'linear':
+            classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
+        elif args.cls == 'cos':
+            classifier = FC_Classifier(args.feat_dim, args.num_class)
+        else:
+            classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
         classifier.apply(self.weights_init)
         return classifier
 
