@@ -183,7 +183,7 @@ def main(args):
 
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
-    dataset_train.mode = 'train'
+    dataset_train.mode = 'val'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
