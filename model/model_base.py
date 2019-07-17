@@ -114,7 +114,7 @@ class LearningModule(LearningModuleBase):
 class NovelTuningModuleBase(nn.Module):
     def __init__(self):
         super(NovelTuningModuleBase, self).__init__()
-        self.range_of_compute = 5
+        self.range_of_compute = 1
 
     def forward(self, x):
         raise NotImplementedError
