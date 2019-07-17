@@ -157,8 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    return None
-    if (epoch == 8 or epoch == 16 or epoch == 24) and iteration == 0:
+    if (epoch == 8 or epoch == 12 or epoch == 24) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -184,7 +183,7 @@ def main(args):
 
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
-    dataset_train.mode = 'train'
+    dataset_train.mode = 'val'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,

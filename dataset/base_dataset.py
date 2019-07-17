@@ -2,15 +2,13 @@ import os
 import json
 import torch
 from dataset.dataset_base import BaseBaseDataset
-from PIL import Image
-import PIL
+import cv2
 import torchvision
 from torchvision import transforms
 import numpy as np
 from numpy.random import choice
 import math
 import random
-import cv2
 
 
 class ImgBaseDataset(BaseBaseDataset):
@@ -102,12 +100,12 @@ class ImgBaseDataset(BaseBaseDataset):
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-            img = cv2.imread(image_path)
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
 
             assert (img.ndim == 3)
 
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interp='bilinear')
 
             # image transform
             img = self.img_transform(img)
@@ -235,8 +233,8 @@ class ObjBaseDataset(BaseBaseDataset):
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
-            img = Image.open(image_path)
-            img = img.crop((anchor[0][0], anchor[0][1], anchor[1][0], anchor[1][1]))
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
+            assert (img.ndim == 3)
 
             # note that each sample within a mini batch has different scale param
             # img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)

@@ -19,7 +19,7 @@ def save_feature(args):
     network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
-    network_.load_state_dict(torch.load('ckpt/sqrt_balance_2/net_epoch_24.pth'))
+    network_.load_state_dict(torch.load('ckpt_lr0.01/net_epoch_19.pth'))
     torch.save(network_.module.state_dict(), 'tmp.pth')
 
     print('Real Loading Start')
@@ -123,6 +123,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
 
     # Path related arguments

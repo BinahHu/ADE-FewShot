@@ -134,7 +134,7 @@ def checkpoint(nets, history, args, epoch_num):
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    fc_classifier = builder.build_classification_layer(args)
+    classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     crit_seg = nn.NLLLoss(ignore_index=-1)
@@ -172,11 +172,11 @@ def main(args):
     
     args.logger = Logger(os.path.join(args.log_dir, args.comment))
 
-    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
     optimizers = [optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
-    network = NovelTuningModule(crit, fc_classifier)
+    network = NovelTuningModule(crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -202,6 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
 
     # Path related arguments
