@@ -56,11 +56,11 @@ def train(module, iterator, optimizers, history, epoch, args):
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'lr_feat: {:.6f}, lr_cls: {:.6f}, '
+                  'lr_cls: {:.6f}, '
                   'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          args.lr_feat, args.lr_cls,
+                          args.lr_cls,
                           ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
             info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
             acc_iter = 0

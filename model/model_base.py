@@ -132,6 +132,7 @@ class NovelTuningModuleBase(nn.Module):
         num = pred.shape[0]
         preds = np.array(pred.detach().cpu())
         preds = np.argsort(preds)
+        label = np.array(label.detach().cpu())
         for i in range(num):
             if label[i] in preds[i, -self.range_of_compute:]:
                 acc_sum += 1
