@@ -157,6 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
+    return None
     if (epoch == 4 or epoch == 8 or epoch == 24) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:

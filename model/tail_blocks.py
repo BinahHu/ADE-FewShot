@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.weight_norm import WeightNorm
 
 
 class FC_Classifier(nn.Module):
@@ -24,9 +25,9 @@ class FC_Classifier(nn.Module):
         elif output == 'vis':
             return acc, pred, label
 
-class distLinear(nn.Module):
+class Cos_Classifier(nn.Module):
     def __init__(self, indim, outdim):
-        super(distLinear, self).__init__()
+        super(Cos_Classifier, self).__init__()
         self.L = nn.Linear( indim, outdim, bias = False)
         self.class_wise_learnable_norm = True  #See the issue#4&8 in the github 
         if self.class_wise_learnable_norm:      
