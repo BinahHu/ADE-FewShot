@@ -8,6 +8,7 @@ import numpy as np
 import json
 import random
 import h5py
+import cv2
 
 
 class Dataset(object):
@@ -201,6 +202,9 @@ class BaseBaseDataset(Dataset):
         img = img.astype(np.float32)
         if self.mode == 'train':
             img = self.random_crop(img)[0]
+            random_flip = np.random.choice([0, 1])
+            if random_flip == 1:
+                img = cv2.flip(img, 1)
         img = img.transpose((2, 0, 1))
         img = self.normalize(torch.from_numpy(img.copy()))
         return img
