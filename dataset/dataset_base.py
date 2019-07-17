@@ -137,14 +137,9 @@ class BaseBaseDataset(Dataset):
         self.mode = None
 
         # mean and std
-        self.transforms = transforms.Compose([
-            transforms.RandomCrop((224, 224)),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[122.7717, 115.9465, 102.9801],
-                std=[1., 1., 1.])
-        ])
+        self.normalize = transforms.Normalize(
+            mean=[102.9801, 115.9465, 122.7717],
+            std=[1., 1., 1.])
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
         if isinstance(odgt, list):
