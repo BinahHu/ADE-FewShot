@@ -235,7 +235,6 @@ class ObjBaseDataset(BaseBaseDataset):
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
             assert (img.ndim == 3)
-
             # note that each sample within a mini batch has different scale param
             # img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
             if self.mode == 'val':

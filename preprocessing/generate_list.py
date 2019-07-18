@@ -55,25 +55,28 @@ def base_obj_list(args, base_set, base_list, img_path):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
-        for j in range(0, math.ceil(length / 6)):
-            result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
-            box = all_list[i][j]["box"]
-            result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
-            result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
-
-    for i in range(len(base_list)):
-        length = len(all_list[i])
-        for j in range(math.ceil(length / 6), length):
+        train_num = length
+        if args.cap != 0:
+            train_num = min(args.cap, math.ceil(5 * train_num / 6))
+        for j in range(0, train_num):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
             result_train += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
 
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_train.odgt')
+    for i in range(len(base_list)):
+        length = len(all_list[i])
+        for j in range(math.ceil(length * 5 / 6), length):
+            result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+            box = all_list[i][j]["box"]
+            result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
+
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_train_cap.odgt')
     f = open(output_path, 'w')
     f.write(result_train)
     f.close()
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_val.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_val_cap.odgt')
     f = open(output_path, 'w')
     f.write(result_val)
     f.close()
@@ -105,6 +108,11 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
+        cap = 0
+        if args.cap != 0:
+            cap = min(args.cap, math.ceil(length / 6))
+        else:
+            cap = math.ceil(length / 6)
         for j in range(0, math.ceil(length / 6)):
             result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
@@ -207,11 +215,12 @@ if __name__ == '__main__':
     parser.add_argument('-root_dataset', default='../data/ADE/')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
     parser.add_argument('-dest', default='list')
-    parser.add_argument('-part', default='novel')
+    parser.add_argument('-part', default='base')
     parser.add_argument('-mode', default='obj')
-    parser.add_argument('-output', default='ADE_Novel/')
+    parser.add_argument('-output', default='ADE_Base/')
     parser.add_argument('-shot', default=5)
     parser.add_argument('-img_size', default='img_path2size.json')
+    parser.add_argument('--cap', type=int, default=0)
     args = parser.parse_args()
 
     if args.dest == 'list':

@@ -193,8 +193,8 @@ class BaseBaseDataset(Dataset):
         if self.mode == 'train':
             img = self.random_crop(img)[0]
             random_flip = np.random.choice([0, 1])
-            if random_flip == 1:
-                img = cv2.flip(img, 1)
+            # if random_flip == 1:
+            #     img = cv2.flip(img, 1)
         img = img.transpose((2, 0, 1))
         img = self.normalize(torch.from_numpy(img.copy()))
         return img
