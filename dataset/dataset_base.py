@@ -137,10 +137,9 @@ class BaseBaseDataset(Dataset):
             std=[1., 1., 1.])
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
-        if isinstance(odgt, list):
-            self.list_sample = odgt
-        elif isinstance(odgt, str):
-            self.list_sample = [json.loads(x.rstrip()) for x in open(odgt, 'r')]
+        f = open(odgt, 'r')
+        self.list_sample = json.load(f)
+        f.close()
 
         if max_sample > 0:
             self.list_sample = self.list_sample[0:max_sample]
@@ -191,7 +190,6 @@ class BaseBaseDataset(Dataset):
         # image to float
         img = img.astype(np.float32)
         if self.mode == 'train':
-            img = self.random_crop(img)[0]
             random_flip = np.random.choice([0, 1])
             if random_flip == 1:
                 img = cv2.flip(img, 1)
@@ -202,37 +200,6 @@ class BaseBaseDataset(Dataset):
     # Round x to the nearest multiple of p and x' >= x
     def round2nearest_multiple(self, x, p):
         return ((x - 1) // p + 1) * p
-
-    def __getitem__(self, index):
-        return NotImplementedError
-
-    def __len__(self):
-        return NotImplementedError
-
-    def _get_sub_batch(self):
-        return NotImplementedError
-
-
-class BaseNovelDataset(Dataset):
-    def __init__(self, h5path, opt, **kwargs):
-        self.feat_dim = opt.feat_dim
-        self.data_path = h5path
-        self.features = None
-        self.labels = None
-        self.num_sample = 0
-        self.data = None
-        self._get_feat_data()
-
-    def _get_feat_data(self):
-        f = h5py.File(self.data_path, 'r')
-        self.features = np.array(f['feature_map'])
-        self.labels = np.array(f['labels'])
-        self.num_sample = self.labels.size
-
-        self.data = [dict() for i in range(self.num_sample)]
-        for i in range(self.num_sample):
-            self.data[i] = {'feature': self.features[i],
-                            'label': self.labels[i]}
 
     def __getitem__(self, index):
         return NotImplementedError

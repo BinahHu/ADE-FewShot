@@ -27,6 +27,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
+        self.sample_per_img = opt.sample_per_batch
 
     def _get_sub_batch(self):
         while True:
@@ -62,17 +63,14 @@ class ImgBaseDataset(BaseBaseDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        # resize all images' short edges to the chosen size
-        if isinstance(self.imgSizes, list) or isinstance(self.imgSizes, tuple):
-            this_short_size = np.random.choice(self.imgSizes)
-        else:
-            this_short_size = self.imgSizes
+        this_short_size = 600
 
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
         batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
-        batch_ids = np.zeros(self.batch_per_gpu)
+        batch_labels = np.zeros((self.batch_per_gpu, self.sample_per_img))
+        batch_anchors = np.zeros((self.batch_per_gpu, self.sample_per_img, 4))
         for i in range(self.batch_per_gpu):
             img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
             this_scale = min(
@@ -101,22 +99,25 @@ class ImgBaseDataset(BaseBaseDataset):
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)
-
             assert (img.ndim == 3)
-
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interp='bilinear')
-
+            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interpolation=cv2.INTER_CUBIC)
             # image transform
             img = self.img_transform(img)
-
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
-            batch_ids[i] = this_record[i]['id']
+            anchors = batch_records[i]['anchors']
+            anchor_num = len(anchors)
+            for j in range(self.sample_per_img):
+                index = random.randint(0, anchor_num - 1)
+                batch_labels[i, j] = int(anchors[j]['cls_label'])
+                batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
 
         output = dict()
         output['img_data'] = batch_images
-        output['scales'] = batch_scales
-        output['ids'] = batch_ids
+        output['scales'] = torch.tensor(batch_scales)
+        output['cls_label'] = torch.tensor(batch_labels)
+        output['anchors'] = torch.tensor(batch_anchors)
+
         return output
 
     def __len__(self):
