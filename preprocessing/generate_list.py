@@ -66,10 +66,7 @@ def base_obj_list(args, base_set, base_list, img_path):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
-        val_num = length
-        if args.cap != 0:
-            val_num = min(args.cap, math.ceil(5 * val_num / 6))
-        for j in range(val_num, length):
+        for j in range(math.ceil(length * 5 / 6), length):
             result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
