@@ -11,3 +11,4 @@ model/prtrain/
 run.sh
 diagnosis/*.json
 diagnosis/*.pth
+model/roi_align/
