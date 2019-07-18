@@ -157,8 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    return None
-    if (epoch == 4 or epoch == 8 or epoch == 24) and iteration == 0:
+    if (epoch == 3 or epoch == 6 or epoch == 16) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -167,6 +166,8 @@ def train_adjust_lr(optimizers, epoch, iteration, args):
 
 def main(args):
     # Network Builders
+    if args.mask:
+        args.num_class = 108
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     classifier = builder.build_classification_layer(args)
@@ -182,6 +183,9 @@ def main(args):
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
+    if args.mask:
+        args.list_train = args.list_train[:-5] + "_mask" + args.list_train[-5:]
+        args.list_val = args.list_val[:-5] + "_mask" + args.list_val[-5:]
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_train.mode = 'val'
@@ -225,6 +229,10 @@ def main(args):
     network = LearningModule(feature_extractor, crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
+    if args.weight_init != '':
+        network.load_state_dict(
+            torch.load(args.weight_init))
+
     network.cuda()
 
     if args.log != '':
@@ -322,6 +330,8 @@ if __name__ == '__main__':
                         help='if horizontally flip images when training')
     parser.add_argument('--sample_type', default='inst',
                         help='instance level or category level sampling')
+    parser.add_argument('--mask', type=bool, default=False,
+                        help='merge small classes')
 
 
     # Misc arguments

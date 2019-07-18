@@ -19,7 +19,7 @@ def save_feature(args):
     network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
-    network_.load_state_dict(torch.load('ckpt_lr0.001drop4pre/net_epoch_19.pth'))
+    network_.load_state_dict(torch.load('ckpt_lr0.1mask/net_epoch_12.pth'))
     torch.save(network_.module.state_dict(), 'tmp.pth')
 
     print('Real Loading Start')
@@ -128,9 +128,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Novel/novel_obj_train_before_feat.odgt')
+                        default='./data/ADE/ADE_Novel/novel_obj_train_before_feat_mask.odgt')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Novel/novel_obj_val_before_feat.odgt')
+                        default='./data/ADE/ADE_Novel/novel_obj_val_before_feat_mask.odgt')
     parser.add_argument('--root_dataset',
                         default='../')
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=189)
+    parser.add_argument('--num_class', default=189, type = int)
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],

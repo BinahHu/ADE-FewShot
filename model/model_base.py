@@ -96,8 +96,6 @@ class LearningModule(LearningModuleBase):
             label = feed_dict['{type}_label'.format(type=crit['type'])].long()
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
-            print(pred)
-            print(label)
             loss += crit['weight'] * crit['crit'](pred, label)
             if self.output == 'dumb':
                 acc += self._acc(pred, label, self.output)
@@ -115,7 +113,7 @@ class LearningModule(LearningModuleBase):
 class NovelTuningModuleBase(nn.Module):
     def __init__(self):
         super(NovelTuningModuleBase, self).__init__()
-        self.range_of_compute = 1
+        self.range_of_compute = 5
 
     def forward(self, x):
         raise NotImplementedError

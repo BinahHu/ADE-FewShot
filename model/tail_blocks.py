@@ -46,6 +46,7 @@ class Cos_Classifier(nn.Module):
             self.L.weight.data = self.L.weight.data.div(L_norm + 0.00001)
         cos_dist = self.L(x_normalized) #matrix product by forward function, but when using WeightNorm, this also multiply the cosine distance by a class-wise learnable norm, see the issue#4&8 in the github
         scores = self.scale_factor* (cos_dist) 
+        return scores
     
     def _acc(self, pred, label, output='dumb'):
         _, preds = torch.max(pred, dim=1)
