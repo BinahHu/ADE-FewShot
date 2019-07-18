@@ -6,7 +6,9 @@ import cv2
 import torchvision
 from torchvision import transforms
 import numpy as np
+from numpy.random import choice
 import math
+import random
 
 
 class ImgBaseDataset(BaseBaseDataset):
@@ -121,7 +123,7 @@ class ImgBaseDataset(BaseBaseDataset):
         return int(1e10) # It's a fake length due to the trick that every loader maintains its own list
         #return self.num_sampleclass
 
-
+        
 class ObjBaseDataset(BaseBaseDataset):
     """
     Form batch at object level
@@ -136,48 +138,45 @@ class ObjBaseDataset(BaseBaseDataset):
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
         # organize objects in categories level
-        self.construct_cat_list()
+        self.num_class = opt.num_class
+        if self.mode is not 'inst':
+            self.cat_list = [[] for i in range(self.num_class)]
+            self.cat_length = np.zeros(self.num_class)
+            self.cat_weight = np.zeros(self.num_class)
+            self.construct_cat_list(opt)
 
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
-        self.cur_cat = 0
-        self.cur_cat_idx = [0 for _ in range(len(self.cat_sample))]
         self.if_shuffled = False
-    
-    def construct_cat_list(self):
-        cat_map = {}
-        self.cat_sample = []
+
+    def construct_cat_list(self, args):
+        def weight_function(x, args):
+            if args.sample_type == 'cat_sqrt':
+                return math.sqrt(x)
+            elif args.sample_type == 'cat_equal':
+                return 1
+            elif args.sample_type == 'inst':
+                return x
         for sample in self.list_sample:
-            cat = sample['cls_label']
-            if cat not in cat_map:
-                cat_map[cat] = len(self.cat_sample)
-                self.cat_sample.append([])
-            self.cat_sample[cat_map[cat]].append(sample)
-        self.cat_sample_num = [len(cat) for cat in self.cat_sample]
-        self.cat_num = len(self.cat_sample)
-    
+            category = int(sample['cls_label'])
+            self.cat_list[category].append(sample)
+
+        for i in range(self.num_class):
+            self.cat_length[i] = len(self.cat_list[i])
+            self.cat_weight[i] = weight_function(self.cat_length[i], args)
+        weight_sum = np.sum(self.cat_weight)
+        for i in range(self.num_class):
+            self.cat_weight[i] = self.cat_weight[i] / weight_sum
+
     def _get_sub_batch_cat(self):
-        while True:
-            #get a sample record
-            cat = self.cur_cat
-            this_sample = self.cat_sample[cat][self.cur_cat_idx[cat]]
-            self.batch_record_list.append(this_sample)
-            
-            #update current sample pointer
-            self.cur_cat_idx[cat] += 1
-            if self.cur_cat_idx[cat] >= self.cat_sample_num[cat]:
-                self.cur_cat_idx[cat] = 0
-                np.random.shuffle(self.cat_sample[cat])
-            
-            if len(self.batch_record_list) == self.batch_per_gpu:
-                batch_records = self.batch_record_list
-                self.batch_record_list = []
-                # update current category pointer
-                self.cur_cat += 1
-                if self.cur_cat >= self.cat_num:
-                    self.cur_cat = 0
-                    np.random.shuffle(self.cat_sample)
-                break
+        batch_records = []
+        sample_categories = choice(np.arange(self.num_class).astype(np.int),
+                                   self.batch_per_gpu,
+                                   p=self.cat_weight,
+                                   replace=False)
+        for sample_category in sample_categories:
+            length = len(self.cat_list[sample_category])
+            batch_records.append(self.cat_list[sample_category][random.randint(0, length - 1)])
         return batch_records
 
     def _get_sub_batch(self):
@@ -202,9 +201,6 @@ class ObjBaseDataset(BaseBaseDataset):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
         if not self.if_shuffled:
             np.random.shuffle(self.list_sample)
-            np.random.shuffle(self.cat_sample)
-            for cat_list in self.cat_sample:
-                np.random.shuffle(cat_list)
             self.if_shuffled = True
 
         # get sub-batch candidates
@@ -239,11 +235,12 @@ class ObjBaseDataset(BaseBaseDataset):
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)[anchor[0][1]:anchor[1][1], anchor[0][0]:anchor[1][0], :]
             assert (img.ndim == 3)
-
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
-            # image transform
-            img = self.random_crop(img)[0]
+            # img = cv2.resize(img, (batch_resized_size[i, 1], batch_resized_size[i, 0]), interpolation=cv2.INTER_CUBIC)
+            if self.mode == 'val':
+                img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_CUBIC)
+            elif self.mode == 'train':
+                img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_CUBIC)
             img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img

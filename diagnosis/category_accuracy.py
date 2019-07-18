@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 import json
 import math
-from diagnosis.category_dataset import ObjCategoryDataset
+from dataset.base_dataset import ObjBaseDataset
 from dataset.dataloader import DataLoaderIter, DataLoader
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from utils import AverageMeter
@@ -20,16 +20,22 @@ def validate(module, iterator, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_acc = AverageMeter()
-
-    module.eval()
     # main loop
     tic = time.time()
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        _, acc = module(batch_data)
+        _, acc, pred, label = module(batch_data)
         acc = acc.mean()
+        if i == 0:
+            preds = np.array(pred.detach().cpu())
+            labels = np.array(label.detach().cpu())
+        else:
+            pred = np.array(pred.detach().cpu())
+            label = np.array(label.detach().cpu())
+            preds = np.vstack((preds, pred))
+            labels = np.hstack((labels, label))
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -45,13 +51,13 @@ def validate(module, iterator, epoch, args):
                           ave_acc.average()))
 
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
-    return ave_acc.average()
+    return preds, labels
 
 
 def main(args):
     # Network Builders
     builder = ModelBuilder()
-    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.model_weight)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
 
     crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -61,35 +67,53 @@ def main(args):
 
 
     accuracy = np.zeros(args.num_class)
-    for category_index in range(args.num_class):
-        print("{} Evaluation Starting".format(category_index))
-        dataset_val = ObjCategoryDataset(category_index, args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
-        loader_val = DataLoader(
-            dataset_val, batch_size=len(args.gpus), shuffle=False,
-            collate_fn=user_scattered_collate,
-            num_workers=int(args.workers),
-            drop_last=True,
-            pin_memory=True
-        )
-        args.val_epoch_iters = \
-            math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
-        print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
+    dataset_val = ObjBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val.mode = 'val'
+    loader_val = DataLoader(
+        dataset_val, batch_size=len(args.gpus), shuffle=False,
+        collate_fn=user_scattered_collate,
+        num_workers=int(args.workers),
+        drop_last=True,
+        pin_memory=True
+    )
+    args.val_epoch_iters = \
+        math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
+    print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
-        iterator_val = iter(loader_val)
-        network = LearningModule(feature_extractor, crit, fc_classifier)
-        network = UserScatteredDataParallel(network, device_ids=args.gpus)
-        patch_replication_callback(network)
-        network.cuda()
-        network.eval()
+    iterator_val = iter(loader_val)
+    network = LearningModule(feature_extractor, crit, fc_classifier, output='vis')
+    network = UserScatteredDataParallel(network, device_ids=args.gpus)
+    patch_replication_callback(network)
+    network.cuda()
+    network.load_state_dict(torch.load(args.weight_init))
+    network.eval()
 
-        acc = 0
-        for epoch in range(args.num_epoch):
-            ave_acc = validate(network, iterator_val, epoch, args)
-            acc += ave_acc
-        acc = acc / args.num_epoch
-        accuracy[category_index] = acc
+    preds, labels = validate(network, iterator_val, 1, args)
+    preds = preds[:dataset_val.num_sample, :]
+    preds = np.argsort(preds)
+    labels = labels[:dataset_val.num_sample]
+    labels = np.reshape(labels, labels.size)
+    occurence = np.zeros(args.num_class)
+    accuracy_top_1 = np.zeros(args.num_class)
+    accuracy_top_5 = np.zeros(args.num_class)
+    for index, label in enumerate(labels):
+        label = int(label)
+        occurence[label] += 1
+        if label in preds[index, -5:]:
+            accuracy_top_5[label] += 1
+        if label in preds[index, -1:]:
+            accuracy_top_1[label] += 1
+    for i in range(args.num_class):
+        accuracy_top_1[i] = accuracy_top_1[i] / occurence[i]
+        accuracy_top_5[i] = accuracy_top_5[i] / occurence[i]
+
     print('Evaluation Done')
-
+    f = open('top1-accuracy.json', 'w')
+    json.dump(accuracy_top_1.tolist(), f)
+    f.close()
+    f = open('top5-accuracy.json', 'w')
+    json.dump(accuracy_top_5.tolist(), f)
+    f.close()
 
 
 if __name__ == '__main__':
@@ -98,8 +122,9 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--model_weight', default=None)
+    parser.add_argument('--weight_init', default='')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -110,7 +135,7 @@ if __name__ == '__main__':
                         default='../../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
@@ -141,6 +166,7 @@ if __name__ == '__main__':
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=20,
                         help='frequency to display')
+    parser.add_argument('--sample_type', default='inst')
 
     args = parser.parse_args()
 

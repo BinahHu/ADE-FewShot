@@ -4,6 +4,7 @@ import random
 import argparse
 import json
 import math
+import copy
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,8 @@ from utils import  AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
+
+from loss.focal import FocalLoss
 
 from logger import Logger
 
@@ -30,6 +33,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0 
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -44,6 +48,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss = loss.mean()
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1 
 
         # Backward
         loss.backward()
@@ -65,9 +70,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average(), acc_iter / args.disp_iter))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / args.disp_iter}
+                          ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -90,6 +96,7 @@ def validate(module, iterator, history, epoch, args):
     # main loop
     tic = time.time()
     acc_iter = 0
+    acc_iter_num = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -97,6 +104,7 @@ def validate(module, iterator, history, epoch, args):
         _, acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
+        acc_iter_num += 1
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -109,10 +117,11 @@ def validate(module, iterator, history, epoch, args):
                     'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average(), acc_iter / args.disp_iter))
+                          ave_acc.average(), acc_iter / acc_iter_num))
             
-            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / args.disp_iter}
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
             acc_iter = 0
+            acc_iter_num = 0
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -127,6 +136,8 @@ def validate(module, iterator, history, epoch, args):
 
 def checkpoint(nets, history, args, epoch_num):
     print('Saving checkpoints to {}...'.format(args.ckpt))
+    if not os.path.exists(args.ckpt):
+        os.makedirs(args.ckpt)
     suffix_latest = 'epoch_{}.pth'.format(epoch_num)
 
     torch.save(history,
@@ -146,7 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 32 or epoch == 32 or epoch == 32) and iteration == 0:
+    if (epoch == 8 or epoch == 12 or epoch == 24) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -157,15 +168,22 @@ def main(args):
     # Network Builders
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
-    fc_classifier = builder.build_classification_layer(args)
+    classifier = builder.build_classification_layer(args)
 
-    crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    if args.loss == 'CE':
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+    elif args.loss == 'Focal':
+        crit_cls = FocalLoss(class_num = args.num_class, dev_num = len(args.gpus))
+    else:
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
+
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_train.mode = 'val'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -173,8 +191,11 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
+    valargs = copy.deepcopy(args)
+    valargs.sample_type = 'inst'    # always use instance level sampling on val set
     dataset_val = ObjBaseDataset(
-        args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+        args.list_val, valargs, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val.mode = 'val'
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -195,11 +216,12 @@ def main(args):
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
-    network = LearningModule(feature_extractor, crit, fc_classifier)
+
+    network = LearningModule(feature_extractor, crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -227,9 +249,9 @@ def main(args):
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
-                                    lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
+                                     lr=args.lr_feat, momentum=0.9, weight_decay=args.weight_decay)
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
+                                    lr=args.lr_cls, momentum=0.9, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args, mode='train')
@@ -245,8 +267,10 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
+    parser.add_argument('--loss', default='CE', help='specific the training loss')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -271,7 +295,7 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
-    parser.add_argument('--weight_decay', default=0.0001)
+    parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--weight_init', default='')
 
     # Warm up
@@ -307,7 +331,7 @@ if __name__ == '__main__':
                         help='frequency to display')
     parser.add_argument('--log_dir', default="./log_base/",
                         help='dir to save train and val log')
-    parser.add_argument('--comment', default="",
+    parser.add_argument('--comment', default="this_child_may_save_the_world",
                         help='add comment to this train')
 
     args = parser.parse_args()
