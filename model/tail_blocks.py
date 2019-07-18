@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.weight_norm import WeightNorm
 
 
 class FC_Classifier(nn.Module):
@@ -24,9 +25,9 @@ class FC_Classifier(nn.Module):
         elif output == 'vis':
             return acc, pred, label
 
-class distLinear(nn.Module):
+class Cos_Classifier(nn.Module):
     def __init__(self, indim, outdim):
-        super(distLinear, self).__init__()
+        super(Cos_Classifier, self).__init__()
         self.L = nn.Linear( indim, outdim, bias = False)
         self.class_wise_learnable_norm = True  #See the issue#4&8 in the github 
         if self.class_wise_learnable_norm:      
@@ -45,6 +46,7 @@ class distLinear(nn.Module):
             self.L.weight.data = self.L.weight.data.div(L_norm + 0.00001)
         cos_dist = self.L(x_normalized) #matrix product by forward function, but when using WeightNorm, this also multiply the cosine distance by a class-wise learnable norm, see the issue#4&8 in the github
         scores = self.scale_factor* (cos_dist) 
+        return scores
     
     def _acc(self, pred, label, output='dumb'):
         _, preds = torch.max(pred, dim=1)

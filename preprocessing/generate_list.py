@@ -1,5 +1,5 @@
 """
-Generate the list for training and testing
+Add cluster mask to imgs
 """
 import json
 import numpy as np
@@ -7,7 +7,10 @@ import os
 import argparse
 import random
 import math
+random.seed(73)
 
+def add_context(args, box, shape):
+    return box
 
 def base_list(args):
     origin_dataset = os.path.join(args.root_dataset, args.origin_dataset)
@@ -15,6 +18,7 @@ def base_list(args):
     base_list_path = os.path.join(origin_dataset, 'base_list.json')
     img_path_path = os.path.join(origin_dataset, 'img_path.json')
     data_img_path = os.path.join(origin_dataset, 'data_img.json')
+    mask_path = os.path.join(origin_dataset, 'mask.json')
 
     f = open(base_set_path, 'r')
     base_set = json.load(f)
@@ -28,7 +32,10 @@ def base_list(args):
     f = open(data_img_path, 'r')
     data_img = json.load(f)
     f.close()
-
+    f = open(mask_path, 'r')
+    mask = json.load(f)
+    f.close()
+    args.maskset = mask
     if args.mode == 'obj':
         base_obj_list(args, base_set, base_list, img_path)
     elif args.mode == 'img':
@@ -39,22 +46,38 @@ def base_obj_list(args, base_set, base_list, img_path):
     """
     Generate object level base training dataset odgt
     """
+    img_size_path = os.path.join(os.path.join(args.root_dataset, args.origin_dataset),
+                                 args.img_size)
+    f = open(img_size_path, 'r')
+    image_size = json.load(f)
+    f.close()
+
     result_train = ""
     result_val = ""
     all_list = [[] for category in base_list]
+    mask = args.maskset
 
     for obj in base_set:
         path = img_path[int(obj["img"])]
         category = base_list.index(int(obj["obj"]))
+        if args.mask and str(category) in mask:
+            category  = mask[str(category)]
         box = obj["box"]
+        shape = image_size[path]
+        if args.context:
+            box = add_context(args, box, shape)
         annotation = {"path": path, "obj": category, "box": box}
         all_list[category].append(annotation)
 
     for category in range(len(base_list)):
+        if all_list[category] == []:
+            continue
         random.shuffle(all_list[category])
 
     for i in range(len(base_list)):
         length = len(all_list[i])
+        if length == 0:
+            continue
         train_num = length
         if args.cap != 0:
             train_num = min(args.cap, math.ceil(5 * train_num / 6))
@@ -66,17 +89,25 @@ def base_obj_list(args, base_set, base_list, img_path):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
-        for j in range(math.ceil(length * 5 / 6), length):
-            result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
+        if length == 0:
+            continue
+        for j in range(math.ceil(length / 6), length):
+            result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
             result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
             result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
 
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_train_cap.odgt')
+    suffix = ""
+    if args.mask:
+        suffix = "_mask"
+    elif args.context:
+        suffix = "_context"
+    
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_train{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_train)
     f.close()
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_val_cap.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_obj_val{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_val)
     f.close()
@@ -95,19 +126,29 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
     result_train = ""
     result_val = ""
     all_list = [[] for category in base_list]
+    mask = args.maskset
 
     for obj in base_set:
         path = img_path[int(obj["img"])]
         category = base_list.index(int(obj["obj"]))
+        if args.mask and str(category) in mask:
+            category  = mask[str(category)]
+        shape = image_size[path]
         box = obj["box"]
+        if args.context:
+            box = add_context(args, box, shape)
         annotation = {"path": path, "obj": category, "box": box}
         all_list[category].append(annotation)
 
     for category in range(len(base_list)):
+        if all_list[category] == []:
+            continue
         random.shuffle(all_list[category])
 
     for i in range(len(base_list)):
         length = len(all_list[i])
+        if length == 0:
+            continue
         cap = 0
         if args.cap != 0:
             cap = min(args.cap, math.ceil(length / 6))
@@ -124,6 +165,8 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
 
     for i in range(len(base_list)):
         length = len(all_list[i])
+        if length == 0:
+            continue
         for j in range(math.ceil(length / 6), length):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
@@ -132,12 +175,18 @@ def base_img_list(args, base_set, base_list, img_path, data_img):
             size = image_size[all_list[i][j]['path']]
             result_train += ('\"' + 'height' + '\": ' + str(size[0]) + ', ')
             result_train += ('\"' + 'width' + '\": ' + str(size[1]) + '}' + '\n')
+    
+    suffix = ""
+    if args.mask:
+        suffix = "_mask"
+    elif args.context:
+        suffix = "_context"
 
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_train.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_train{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_train)
     f.close()
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_val.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'base_img_val{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_val)
     f.close()
@@ -179,6 +228,9 @@ def novel_obj_list_before_feat(args, novel_set, novel_list, img_path):
         path = img_path[int(obj["img"])]
         category = novel_list.index(int(obj["obj"]))
         box = obj["box"]
+        shape = image_size[path]
+        if args.context:
+            box = add_context(args, box, shape)
         annotation = {"path": path, "obj": category, "box": box}
         all_list[category].append(annotation)
 
@@ -199,12 +251,15 @@ def novel_obj_list_before_feat(args, novel_set, novel_list, img_path):
             box = all_list[i][j]["box"]
             result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
             result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
-
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_train_before_feat.odgt')
+    
+    suffix = ""
+    if args.context:
+        suffix = "_context"
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_train_before_feat{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_train)
     f.close()
-    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_val_before_feat.odgt')
+    output_path = os.path.join(os.path.join(args.root_dataset, args.output), 'novel_obj_val_before_feat{}.odgt'.format(suffix))
     f = open(output_path, 'w')
     f.write(result_val)
     f.close()
@@ -221,6 +276,8 @@ if __name__ == '__main__':
     parser.add_argument('-shot', default=5)
     parser.add_argument('-img_size', default='img_path2size.json')
     parser.add_argument('--cap', type=int, default=0)
+    parser.add_argument('-mask', type=bool, default=False)
+    parser.add_argument('-context', type=bool, default=False)
     args = parser.parse_args()
 
     if args.dest == 'list':
