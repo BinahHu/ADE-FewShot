@@ -8,6 +8,7 @@ import argparse
 import random
 import math
 
+random.seed(73)
 
 def base_list(args):
     origin_dataset = os.path.join(args.root_dataset, args.origin_dataset)
