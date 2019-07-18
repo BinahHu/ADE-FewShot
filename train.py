@@ -157,7 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 8 or epoch == 16 or epoch == 24) and iteration == 0:
+    if (epoch == 8 or epoch == 12 or epoch == 24) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -168,7 +168,7 @@ def main(args):
     # Network Builders
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
-    fc_classifier = builder.build_classification_layer(args)
+    classifier = builder.build_classification_layer(args)
 
     if args.loss == 'CE':
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -183,7 +183,7 @@ def main(args):
 
     dataset_train = ObjBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
-    dataset_train.mode = 'train'
+    dataset_train.mode = 'val'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -216,12 +216,12 @@ def main(args):
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
-    network = LearningModule(feature_extractor, crit, fc_classifier)
+    network = LearningModule(feature_extractor, crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -250,7 +250,7 @@ def main(args):
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=args.lr_feat, momentum=0.9, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(fc_classifier.parameters(),
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.9, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     for epoch in range(args.start_epoch, args.num_epoch):
@@ -267,6 +267,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
@@ -330,7 +331,7 @@ if __name__ == '__main__':
                         help='frequency to display')
     parser.add_argument('--log_dir', default="./log_base/",
                         help='dir to save train and val log')
-    parser.add_argument('--comment', default="",
+    parser.add_argument('--comment', default="this_child_may_save_the_world",
                         help='add comment to this train')
 
     args = parser.parse_args()

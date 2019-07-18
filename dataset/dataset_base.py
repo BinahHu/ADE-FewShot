@@ -13,7 +13,6 @@ import cv2
 
 class Dataset(object):
     """An abstract class representing a Dataset.
-
     All other datasets should subclass it. All subclasses should override
     ``__len__``, that provides the size of the dataset, and ``__getitem__``,
     supporting integer indexing in range from 0 to len(self) exclusive.
@@ -31,10 +30,8 @@ class Dataset(object):
 
 class TensorDataset(Dataset):
     """Dataset wrapping data and target tensors.
-
     Each sample will be retrieved by indexing both tensors along the first
     dimension.
-
     Arguments:
         data_tensor (Tensor): contains sample data.
         target_tensor (Tensor): contains sample targets (labels).
@@ -58,7 +55,6 @@ class ConcatDataset(Dataset):
     Purpose: useful to assemble different existing datasets, possibly
     large-scale datasets as the concatenation operation is done in an
     on-the-fly manner.
-
     Arguments:
         datasets (iterable): List of datasets to be concatenated
     """
@@ -112,7 +108,6 @@ def random_split(dataset, lengths):
     """
     Randomly split a dataset into non-overlapping new datasets of given lengths
     ds
-
     Arguments:
         dataset (Dataset): Dataset to be split
         lengths (iterable): lengths of splits to be produced

@@ -123,6 +123,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
 
     # Path related arguments
