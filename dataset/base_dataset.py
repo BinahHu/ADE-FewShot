@@ -27,7 +27,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
-        self.sample_per_img = opt.sample_per_batch
+        self.max_anchor_per_img = opt.max_samplr_per_img
 
     def _get_sub_batch(self):
         while True:
@@ -69,8 +69,9 @@ class ImgBaseDataset(BaseBaseDataset):
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
         batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
-        batch_labels = np.zeros((self.batch_per_gpu, self.sample_per_img))
-        batch_anchors = np.zeros((self.batch_per_gpu, self.sample_per_img, 4))
+        batch_anchor_num = np.zeros(self.batch_per_gpu)
+        batch_labels = np.zeros((self.batch_per_gpu, self.max_anchor_per_img))
+        batch_anchors = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, 4))
         for i in range(self.batch_per_gpu):
             img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
             this_scale = min(
@@ -107,8 +108,8 @@ class ImgBaseDataset(BaseBaseDataset):
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
             anchors = batch_records[i]['anchors']
             anchor_num = len(anchors)
-            for j in range(self.sample_per_img):
-                index = random.randint(0, anchor_num - 1)
+            batch_anchor_num[i] = anchor_num
+            for j in range(anchor_num):
                 batch_labels[i, j] = int(anchors[j]['cls_label'])
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
 
@@ -117,6 +118,7 @@ class ImgBaseDataset(BaseBaseDataset):
         output['scales'] = torch.tensor(batch_scales)
         output['cls_label'] = torch.tensor(batch_labels)
         output['anchors'] = torch.tensor(batch_anchors)
+        output['anchor_num'] = torch.tensor(batch_anchor_num)
 
         return output
 
