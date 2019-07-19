@@ -27,7 +27,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
-        self.max_anchor_per_img = opt.max_samplr_per_img
+        self.max_anchor_per_img = opt.max_anchor_per_img
 
     def _get_sub_batch(self):
         while True:

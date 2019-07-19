@@ -5,6 +5,7 @@ from model.tail_blocks import FC_Classifier, FC_Classifier2, distLinear
 from model.resnet import resnet18
 import math
 import numpy as np
+import random
 
 
 class ModelBuilder():
@@ -78,37 +79,32 @@ class LearningModuleBase(nn.Module):
 
 
 class LearningModule(LearningModuleBase):
-    def __init__(self, feature_extractor, crit, cls=None, seg=None, output='dumb'):
+    def __init__(self, args, feature_extractor, crit, cls=None, seg=None, output='dumb'):
         super(LearningModule, self).__init__()
         self.feature_extractor = feature_extractor
         self.cls = cls
         self.seg = seg
         self.crit = crit
         self.output = output
+        self.sample_per_img = args.sample_per_img
 
     def forward(self, feed_dict, mode='train', output='dumb'):
         feature_map = self.feature_extractor(feed_dict['img_data'])
         acc = 0
         loss = 0
-        for crit in self.crit:
-            if crit['weight'] == 0:
-                continue
-            label = feed_dict['{type}_label'.format(type=crit['type'])].long()
-            if crit['type'] == 'cls':
-                pred = self.cls(feature_map)
-
-            loss += crit['weight'] * crit['crit'](pred, label)
-            if self.output == 'dumb':
-                acc += self._acc(pred, label, self.output)
-            else:
-                acc_iter, preds, labels = self._acc(pred, label, self.output)
-                acc += acc_iter
-        if self.output == 'dumb':
-            return loss, acc
-        elif self.output == 'vis':
-            return loss, acc, preds, labels
-        elif self.output == 'feat':
-            return feature_map, feed_dict['cls_label']
+        batch_img_num = feature_map.shape[0]
+        for i in range(batch_img_num):
+            for crit in self.crit:
+                if crit['weight'] == 0:
+                    continue
+                if self.sample_per_img == -1:  # all the samples are used up
+                    anchor_num = feed_dict['anchor_num'][i]
+                    pred = self.cls([feature_map, feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
+                    labels = feed_dict['labels'][i, : anchor_num]
+                    pred = pred[: anchor_num, :].long()
+                    loss += crit['weight'] * crit['crit'](pred, labels)
+                    acc += self._acc(pred, labels, self.output)
+        return loss, acc
 
 
 class NovelTuningModuleBase(nn.Module):
