@@ -109,7 +109,7 @@ class ImgBaseDataset(BaseBaseDataset):
             anchors = batch_records[i]['anchors']
             anchor_num = len(anchors)
             batch_anchor_num[i] = anchor_num
-            for j in range(anchor_num):
+            for j in range(min(anchor_num, self.max_anchor_per_img)):
                 batch_labels[i, j] = int(anchors[j]['cls_label'])
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
 
