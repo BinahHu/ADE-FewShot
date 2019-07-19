@@ -115,9 +115,9 @@ def base_obj_list(args, base_set, base_list, img_path):
         length = len(all_list[i])
         if length == 0:
             continue
-        train_num = length
+        train_num = math.ceil(5 * length / 6)
         if args.cap != 0:
-            train_num = min(args.cap, math.ceil(5 * train_num / 6))
+            train_num = min(args.cap, train_num)
         for j in range(0, train_num):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
