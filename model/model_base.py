@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
-from model.tail_blocks import FC_Classifier, FC_Classifier2, distLinear
+from model.tail_blocks import FC_Classifier, FC_Classifier2, Cos_Classifier
 from model.resnet import resnet18
 import math
 import numpy as np
@@ -38,7 +38,7 @@ class ModelBuilder():
         if args.cls == 'linear2':
             classifier = FC_Classifier2(args.feat_dim, 256, args.num_class)
         elif args.cls == 'cos':
-            classifier = FC_Classifier(args.feat_dim, args.num_class)
+            classifier = Cos_Classifier(args.feat_dim, args.num_class)
         else:
             classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
         classifier.apply(self.weights_init)
@@ -96,7 +96,6 @@ class LearningModule(LearningModuleBase):
             label = feed_dict['{type}_label'.format(type=crit['type'])].long()
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
-
             loss += crit['weight'] * crit['crit'](pred, label)
             if self.output == 'dumb':
                 acc += self._acc(pred, label, self.output)

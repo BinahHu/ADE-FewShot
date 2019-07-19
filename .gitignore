@@ -9,6 +9,7 @@ ckpt*/
 log*/
 model/prtrain/
 run.sh
+val.sh
 diagnosis/*.json
 diagnosis/*.pth
 model/roi_align/
