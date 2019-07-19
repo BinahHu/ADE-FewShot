@@ -157,7 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 3 or epoch == 6 or epoch == 16) and iteration == 0:
+    if (epoch == 3 or epoch == 6 or epoch == 12) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -215,6 +215,7 @@ def main(args):
         math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
+    print("classifier = {}".format(args.cls))
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)

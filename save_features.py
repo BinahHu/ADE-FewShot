@@ -19,7 +19,7 @@ def save_feature(args):
     network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
-    network_.load_state_dict(torch.load('model/trained/pretrain_aug.pth'))
+    network_.load_state_dict(torch.load('ckpt_lr0.1cosdrop/net_epoch_10.pth'))
     torch.save(network_.module.state_dict(), 'tmp.pth')
 
     print('Real Loading Start')
