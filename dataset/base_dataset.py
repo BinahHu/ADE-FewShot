@@ -127,8 +127,6 @@ class ObjBaseDataset(BaseBaseDataset):
                 img = cv2.resize(img, (224, 224), interpolation=cv2.INTER_CUBIC)
             elif self.mode == 'train':
                 img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_CUBIC)
-            # image transform
-            # img = self.random_crop(img)[0]
             img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img
