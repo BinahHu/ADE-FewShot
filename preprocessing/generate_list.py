@@ -176,6 +176,11 @@ def novel_obj_list_before_feat(args, novel_set, novel_list, img_path):
     """
     Generate object level base training dataset odgt
     """
+    img_size_path = os.path.join(os.path.join(args.root_dataset, args.origin_dataset),
+                                 args.img_size)
+    f = open(img_size_path, 'r')
+    image_size = json.load(f)
+    f.close()
     result_train = ""
     result_val = ""
     all_list = [[] for category in novel_list]
