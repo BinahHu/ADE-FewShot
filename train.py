@@ -9,7 +9,7 @@ import copy
 import torch
 import torch.nn as nn
 
-from dataset.base_dataset import ObjBaseDataset
+from dataset.base_dataset import ImgBaseDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoaderIter, DataLoader
 from utils import  AverageMeter, parse_devices
@@ -181,7 +181,7 @@ def main(args):
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
 
-    dataset_train = ObjBaseDataset(
+    dataset_train = ImgBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_train.mode = 'val'
     loader_train = DataLoader(
@@ -193,7 +193,7 @@ def main(args):
     )
     valargs = copy.deepcopy(args)
     valargs.sample_type = 'inst'    # always use instance level sampling on val set
-    dataset_val = ObjBaseDataset(
+    dataset_val = ImgBaseDataset(
         args.list_val, valargs, batch_per_gpu=args.batch_size_per_gpu)
     dataset_val.mode = 'val'
     loader_val = DataLoader(
@@ -221,7 +221,7 @@ def main(args):
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
-    network = LearningModule(feature_extractor, crit, classifier)
+    network = LearningModule(args, feature_extractor, crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -249,9 +249,9 @@ def main(args):
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.9, weight_decay=args.weight_decay)
+                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
-                                    lr=args.lr_cls, momentum=0.9, weight_decay=args.weight_decay)
+                                    lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args, mode='train')
@@ -266,26 +266,30 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='LeNet')
     parser.add_argument('--cls', default='linear')
-    parser.add_argument('--feat_dim', default=512)
+    parser.add_argument('--feat_dim', default=16)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Base/base_obj_train.odgt')
+                        default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Base/base_obj_val.odgt')
+                        default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
 
+    # Train parameters
+    parser.add_argument('--max_anchor_per_img', default=100)
+    parser.add_argument('--sample_per_img', default=-1)
+
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    parser.add_argument('--gpus', default=[0, 1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=64, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=40, type=int,
+    parser.add_argument('--num_epoch', default=2, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
@@ -306,7 +310,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=32, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -315,7 +319,7 @@ if __name__ == '__main__':
                         help='maximum input image size of long edge')
     parser.add_argument('--padding_constant', default=8, type=int,
                         help='maxmimum downsampling rate of the network')
-    parser.add_argument('--segm_downsampling_rate', default=8, type=int,
+    parser.add_argument('--segm_downsampling_rate', default=4, type=int,
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')

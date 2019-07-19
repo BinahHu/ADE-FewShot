@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
-from model.tail_blocks import FC_Classifier, FC_Classifier2, distLinear
+from model.tail_blocks import FC_Classifier
 from model.resnet import resnet18
 import math
 import numpy as np
@@ -35,13 +35,13 @@ class ModelBuilder():
 
     def build_classification_layer(self, args):
         if args.cls == 'linear':
-            classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
+            classifier = FC_Classifier(args, args.feat_dim)
         if args.cls == 'linear2':
             classifier = FC_Classifier2(args.feat_dim, 256, args.num_class)
         elif args.cls == 'cos':
             classifier = FC_Classifier(args.feat_dim, args.num_class)
         else:
-            classifier = FC_Classifier(args.feat_dim, 256, args.num_class)
+            classifier = FC_Classifier(args, args.feat_dim)
         classifier.apply(self.weights_init)
         return classifier
 
@@ -98,10 +98,12 @@ class LearningModule(LearningModuleBase):
                 if crit['weight'] == 0:
                     continue
                 if self.sample_per_img == -1:  # all the samples are used up
-                    anchor_num = feed_dict['anchor_num'][i]
-                    pred = self.cls([feature_map, feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
-                    labels = feed_dict['labels'][i, : anchor_num]
-                    pred = pred[: anchor_num, :].long()
+                    anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+                    if anchor_num == 0:
+                        continue
+                    pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
+                    labels = feed_dict['cls_label'][i, : anchor_num].long()
+                    pred = pred.cuda()
                     loss += crit['weight'] * crit['crit'](pred, labels)
                     acc += self._acc(pred, labels, self.output)
         return loss, acc

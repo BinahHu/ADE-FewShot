@@ -8,8 +8,8 @@ class LeNet(nn.Module):
         super(LeNet, self).__init__()
         # 3 input image channel, 6 output channels, 3x3 square convolution
         # kernel
-        self.conv1 = nn.Conv2d(3, 6, 3)
-        self.conv2 = nn.Conv2d(6, 16, 3)
+        self.conv1 = nn.Conv2d(3, 6, 3, padding=1)
+        self.conv2 = nn.Conv2d(6, 16, 3, padding=1)
 
     def forward(self, x):
         # Max pooling over a (2, 2) window
