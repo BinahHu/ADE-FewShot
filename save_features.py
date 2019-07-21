@@ -19,7 +19,7 @@ def save_feature(args):
     network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
-    network_.load_state_dict(torch.load('ckpt_lr0.1cosdrop_3/net_epoch_24.pth'))
+    network_.load_state_dict(torch.load(args.model))
     torch.save(network_.module.state_dict(), 'tmp.pth')
 
     print('Real Loading Start')
@@ -174,6 +174,8 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
+    parser.add_argument('--model', default="",
+                        help='model to load')
 
     args = parser.parse_args()
 
