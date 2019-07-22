@@ -68,6 +68,7 @@ class FC_Classifier(nn.Module):
         self.in_dim = in_dim
         self.fc1 = nn.Linear(in_dim * self.crop_width * self.crop_height, self.num_class)
         self.type = 'fc_cls'
+        self.output = 'dumb'
 
     def forward(self, x):
         feature_map, scale, anchors, anchor_num = x
@@ -75,10 +76,10 @@ class FC_Classifier(nn.Module):
         scale = np.array(scale.detach().cpu())
         anchors = anchors / self.down_sampling_rate
         anchor_num = int(anchor_num)
-        anchors[:, 2] = anchors[:, 2] / scale[0]
-        anchors[:, 3] = anchors[:, 3] / scale[0]
-        anchors[:, 0] = anchors[:, 0] / scale[1]
-        anchors[:, 1] = anchors[:, 1] / scale[1]
+        anchors[:, 2] = anchors[:, 2] * scale[0]
+        anchors[:, 3] = anchors[:, 3] * scale[0]
+        anchors[:, 0] = anchors[:, 0] * scale[1]
+        anchors[:, 1] = anchors[:, 1] * scale[1]
         anchors[:, [1, 2]] = anchors[:, [2, 1]]
         anchor_index = np.zeros(anchor_num)
         anchor_index = to_variable(anchor_index).int()
@@ -88,6 +89,10 @@ class FC_Classifier(nn.Module):
         # print('feature map size {}'.format(feature_map.shape))
         feature = self.roi_align(feature_map, anchors, anchor_index)
         # print('Feature size is {}'.format(feature.shape))
+
+        if self.output == 'feat':
+            return feature
+
         feature = feature.view(-1, self.in_dim * self.crop_height * self.crop_width)
         # print('Feature shape after view is {}'.format(feature.shape))
         pred = self.fc1(feature)

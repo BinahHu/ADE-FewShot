@@ -95,6 +95,20 @@ class LearningModule(LearningModuleBase):
         acc = 0
         loss = 0
         batch_img_num = feature_map.shape[0]
+
+        features = None
+        if self.output == 'feat':
+            self.cls.output = 'feat'
+            for i in range(batch_img_num):
+                anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+                if anchor_num == 0 or anchor_num >= 100:
+                    continue
+                feature = self.cls([feature_map[i], feed_dict['scales'[i]], feed_dict['anchors'][i], anchor_num])
+                if features is None:
+                    features = feature.clone()
+                else:
+                    features = torch.stack((features, feature), dim=0)
+
         for i in range(batch_img_num):
             for crit in self.crit:
                 if crit['weight'] == 0:
