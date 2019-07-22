@@ -176,6 +176,8 @@ def main(args):
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     elif args.loss == 'Focal':
         crit_cls = FocalLoss(class_num = args.num_class, dev_num = len(args.gpus))
+    elif args.loss == 'Multi':
+        crit_cls = nn.BCEWithLogitsLoss()
     else:
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
 
