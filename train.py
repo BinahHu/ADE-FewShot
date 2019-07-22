@@ -171,7 +171,7 @@ def main(args):
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     classifier = builder.build_classification_layer(args)
-
+    print("Loss = " + args.loss)
     if args.loss == 'CE':
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     elif args.loss == 'Focal':
@@ -229,7 +229,7 @@ def main(args):
     optimizers = [optimizer_feat, optimizer_cls]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
-    network = LearningModule(feature_extractor, crit, classifier)
+    network = LearningModule(args, feature_extractor, crit, classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     if args.weight_init != '':

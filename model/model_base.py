@@ -78,13 +78,14 @@ class LearningModuleBase(nn.Module):
 
 
 class LearningModule(LearningModuleBase):
-    def __init__(self, feature_extractor, crit, cls=None, seg=None, output='dumb'):
+    def __init__(self, args, feature_extractor, crit, cls=None, seg=None, output='dumb'):
         super(LearningModule, self).__init__()
         self.feature_extractor = feature_extractor
         self.cls = cls
         self.seg = seg
         self.crit = crit
         self.output = output
+        self.losstype = args.loss
 
     def forward(self, feed_dict, mode='train', output='dumb'):
         feature_map = self.feature_extractor(feed_dict['img_data'])
@@ -93,7 +94,10 @@ class LearningModule(LearningModuleBase):
         for crit in self.crit:
             if crit['weight'] == 0:
                 continue
-            label = feed_dict['{type}_label'.format(type=crit['type'])].long()
+            if self.losstype == "Multi":
+                label = feed_dict['{type}_label'.format(type=crit['type'])].float()
+            else:
+                label = feed_dict['{type}_label'.format(type=crit['type'])].long()
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
             loss += crit['weight'] * crit['crit'](pred, label)
