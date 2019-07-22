@@ -113,7 +113,7 @@ class ObjBaseDataset(BaseBaseDataset):
 
         batch_images = torch.zeros(self.batch_per_gpu, 3, 224, 224)
         if self.loss == 'Multi':
-            batch_labels = torch.zeros(self.batch_per_gpu, self.num_class).int()
+            batch_labels = -1 * torch.ones(self.batch_per_gpu, self.num_class).int()
         else:
             batch_labels = torch.zeros(self.batch_per_gpu).int()
         for i in range(self.batch_per_gpu):
@@ -137,9 +137,7 @@ class ObjBaseDataset(BaseBaseDataset):
                 batch_labels[i] = this_record['cls_label']
             else:
                 labels = torch.tensor(this_record['multi_label'])
-                labels = labels.unsqueeze(0)
-                target = torch.zeros(labels.size(0), self.num_class).scatter_(1, labels, 1)
-                batch_labels[i, :] = target
+                batch_labels[i, :labels.size] = labels
 
         output = dict()
         output['img_data'] = batch_images
