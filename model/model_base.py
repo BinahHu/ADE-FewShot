@@ -89,7 +89,9 @@ class LearningModule(LearningModuleBase):
         self.sample_per_img = args.sample_per_img
 
     def forward(self, feed_dict, mode='train', output='dumb'):
+        # print(feed_dict['img_data'].shape)
         feature_map = self.feature_extractor(feed_dict['img_data'])
+        # print('feature map shape {}'.format(feature_map.shape))
         acc = 0
         loss = 0
         batch_img_num = feature_map.shape[0]
@@ -99,7 +101,7 @@ class LearningModule(LearningModuleBase):
                     continue
                 if self.sample_per_img == -1:  # all the samples are used up
                     anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
-                    if anchor_num == 0:
+                    if anchor_num == 0 or anchor_num >= 100:
                         continue
                     pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
                     labels = feed_dict['cls_label'][i, : anchor_num].long()

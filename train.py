@@ -45,6 +45,7 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
 
         module.zero_grad()
         loss, acc = module(batch_data)
+        # print(loss)
         loss = loss.mean()
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
@@ -165,6 +166,7 @@ def train_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def main(args):
+    torch.backends.cudnn.deterministic = True
     # Network Builders
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
@@ -266,11 +268,13 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='LeNet')
+    parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='linear')
-    parser.add_argument('--feat_dim', default=16)
+    parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
+    parser.add_argument('--crop_height', default=2)
+    parser.add_argument('--crop_width', default=2)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -285,7 +289,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_per_img', default=-1)
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
@@ -310,7 +314,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -319,7 +323,7 @@ if __name__ == '__main__':
                         help='maximum input image size of long edge')
     parser.add_argument('--padding_constant', default=8, type=int,
                         help='maxmimum downsampling rate of the network')
-    parser.add_argument('--segm_downsampling_rate', default=4, type=int,
+    parser.add_argument('--segm_downsampling_rate', default=8, type=int,
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')

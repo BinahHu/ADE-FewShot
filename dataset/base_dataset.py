@@ -33,6 +33,13 @@ class ImgBaseDataset(BaseBaseDataset):
         while True:
             # get a sample record
             this_sample = self.list_sample[self.cur_idx]
+            # print(len(this_sample['anchors']))
+            if len(this_sample['anchors']) == 0:
+                self.cur_idx += 1
+                if self.cur_idx >= self.num_sample:
+                    self.cur_idx = 0
+                    np.random.shuffle(self.list_sample)
+                continue
             if this_sample['height'] > this_sample['width']:
                 self.batch_record_list[0].append(this_sample)  # h > w, go to 1st class
             else:
@@ -107,9 +114,9 @@ class ImgBaseDataset(BaseBaseDataset):
             img = self.img_transform(img)
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
             anchors = batch_records[i]['anchors']
-            anchor_num = len(anchors)
+            anchor_num = min(len(anchors), self.max_anchor_per_img)
             batch_anchor_num[i] = anchor_num
-            for j in range(min(anchor_num, self.max_anchor_per_img)):
+            for j in range(anchor_num):
                 batch_labels[i, j] = int(anchors[j]['cls_label'])
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
 
