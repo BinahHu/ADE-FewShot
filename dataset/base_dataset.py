@@ -133,6 +133,7 @@ class ObjBaseDataset(BaseBaseDataset):
         self.root_dataset = opt.root_dataset
         self.random_flip = opt.random_flip
         self.mode = opt.sample_type
+        self.loss = opt.loss
         # down sampling rate of segm labe
         self.segm_downsampling_rate = opt.segm_downsampling_rate
         self.batch_per_gpu = batch_per_gpu
@@ -225,11 +226,13 @@ class ObjBaseDataset(BaseBaseDataset):
             batch_resized_size[i, :] = img_resized_height, img_resized_width
 
         batch_images = torch.zeros(self.batch_per_gpu, 3, 224, 224)
-        batch_labels = torch.zeros(self.batch_per_gpu).int()
+        if self.loss == 'multilabel':
+            batch_labels = torch.zeros(self.batch_per_gpu, self.num_class).int()
+        else:
+            batch_labels = torch.zeros(self.batch_per_gpu).int()
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
             anchor = this_record['anchor']
-
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
@@ -244,7 +247,13 @@ class ObjBaseDataset(BaseBaseDataset):
             img = self.img_transform(img)
 
             batch_images[i][:, :, :] = img
-            batch_labels[i] = this_record['cls_label']
+            if self.loss != 'multilabel':
+                batch_labels[i] = this_record['cls_label']
+            else:
+                labels = torch.tensor(this_record['mult_label'])
+                labels = labels.unsqueeze(0)
+                target = torch.zeros(labels.size(0), 15).scatter_(1, labels, 1)
+                batch_labels[i, :] = target
 
         output = dict()
         output['img_data'] = batch_images
