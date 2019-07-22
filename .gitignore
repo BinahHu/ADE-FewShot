@@ -10,6 +10,7 @@ log*/
 model/prtrain/
 run.sh
 val.sh
+feature.sh
 diagnosis/*.json
 diagnosis/*.pth
 model/roi_align/
