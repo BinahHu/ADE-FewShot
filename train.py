@@ -98,10 +98,8 @@ def validate(module, iterator, history, epoch, args):
         data_time.update(time.time() - tic)
 
         _, acc, instances = module(batch_data)
-        instances = instances.typa_as(acc).detach().cpu()
+        instances = instances.type_as(acc).detach().cpu()
         acc = acc.detach().cpu()
-        if max(acc) >= 1:
-            print(acc)
         acc_actual = (acc * instances).sum() / instances.sum().float()
 
         # measure elapsed time
@@ -310,7 +308,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

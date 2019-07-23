@@ -126,7 +126,6 @@ class BaseBaseDataset(Dataset):
         self.imgMaxSize = opt.imgMaxSize
         # max down sampling rate of network to avoid rounding during conv or pooling
         self.padding_constant = opt.padding_constant
-
         # parse the input list
         self.parse_input_list(odgt, **kwargs)
         self.mode = None
@@ -138,8 +137,13 @@ class BaseBaseDataset(Dataset):
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
         f = open(odgt, 'r')
-        self.list_sample = json.load(f)
+        self.old_list_sample = json.load(f)
         f.close()
+
+        self.list_sample = []
+        iterator = filter(lambda x: len(x['anchors']) == 0 or len(x['anchors']))
+        for sample in iterator:
+            self.list_sample.append(sample)
 
         if max_sample > 0:
             self.list_sample = self.list_sample[0:max_sample]

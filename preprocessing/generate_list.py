@@ -33,7 +33,13 @@ def base_generation(args):
             img_path2size[img_path[i]]
         sample_list_train[i]['index'] = i
         sample_list_train[i]['anchors'] = []
-    sample_list_val = sample_list_train.copy()
+    sample_list_val = [dict() for i in range(len(img_path))]
+    for i in range(len(img_path)):
+        sample_list_val[i]['fpath_img'] = img_path[i]
+        sample_list_val[i]['height'], sample_list_val[i]['width'] = \
+            img_path2size[img_path[i]]
+        sample_list_val[i]['index'] = i
+        sample_list_val[i]['anchors'] = []
 
     # get the category information to split train and val
     all_list = [[] for category in base_list]
@@ -61,7 +67,7 @@ def base_generation(args):
 
         for j in range(math.ceil(5 * length / 6), length):
             img_index = all_list[i][j]['img']
-            sample_list_train[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
+            sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'base_img_train.json')
