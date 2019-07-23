@@ -44,12 +44,14 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         data_time.update(time.time() - tic)
 
         module.zero_grad()
-        loss, acc = module(batch_data)
+        loss, acc, instances = module(batch_data)
         # print(loss)
+        instances = instances.detach().cpu()
+        acc = acc.detach().cpu()
         loss = loss.mean()
-        acc = acc.mean()
-        acc_iter += acc.data.item() * 100
-        acc_iter_num += 1 
+        acc = (acc * instances.float()).sum / instances.sum().float()
+        acc_iter += acc.data.item() * 100 * instances.sum().float()
+        acc_iter_num += instances.sum()
 
         # Backward
         loss.backward()
@@ -62,7 +64,8 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
 
         # update average loss and acc
         ave_total_loss.update(loss.data.item())
-        ave_acc.update(acc.data.item() * 100)
+        for k in range(instances.sum()):
+            ave_acc.update(acc.data.item() * 100)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
@@ -102,16 +105,19 @@ def validate(module, iterator, history, epoch, args):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        _, acc = module(batch_data)
-        acc = acc.mean()
-        acc_iter += acc.data.item() * 100
-        acc_iter_num += 1
+        _, acc, instances = module(batch_data)
+        instances = instances.detach().cpu().float()
+        acc = acc.detach().cpu().float()
+        acc = (acc * instances).sum / instances.sum().float()
+        acc_iter += acc.data.item() * 100 * instances.sum().float()
+        acc_iter_num += instances.sum()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
         # update average loss and acc
-        ave_acc.update(acc.data.item() * 100)
+        for k in range(instances.sum()):
+            ave_acc.update(acc.data.item() * 100)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
@@ -273,8 +279,8 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
-    parser.add_argument('--crop_height', default=2)
-    parser.add_argument('--crop_width', default=2)
+    parser.add_argument('--crop_height', default=1)
+    parser.add_argument('--crop_width', default=1)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -289,7 +295,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_per_img', default=-1)
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    parser.add_argument('--gpus', default=[0, 1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
@@ -314,7 +320,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .crop_and_resize import CropAndResizeFunction, CropAndResize
+from roi_align.crop_and_resize import CropAndResizeFunction, CropAndResize
 
 
 class RoIAlign(nn.Module):

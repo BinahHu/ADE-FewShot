@@ -109,6 +109,7 @@ class LearningModule(LearningModuleBase):
                 else:
                     features = torch.stack((features, feature), dim=0)
 
+        instance_sum = torch.tensor([0]).cuda()
         for i in range(batch_img_num):
             for crit in self.crit:
                 if crit['weight'] == 0:
@@ -122,7 +123,8 @@ class LearningModule(LearningModuleBase):
                     pred = pred.cuda()
                     loss += crit['weight'] * crit['crit'](pred, labels)
                     acc += self._acc(pred, labels, self.output)
-        return loss, acc
+                    instance_sum[0] += pred.shape[0]
+        return loss, acc, instance_sum
 
 
 class NovelTuningModuleBase(nn.Module):
