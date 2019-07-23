@@ -1,5 +1,5 @@
 import torch
-from dataset.base_dataset import ObjBaseDataset
+from dataset.base_dataset import ImgBaseDataset
 from dataset.dataloader import DataLoader
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from model.model_base import ModelBuilder, LearningModule
@@ -32,9 +32,9 @@ def save_feature(args):
     network.cuda()
     network.eval()
 
-    dataset_train = ObjBaseDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_train = ImgBaseDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_train.mode = 'val'
-    dataset_val = ObjBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+    dataset_val = ImgBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_val.mode = 'val'
     dataloader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
@@ -82,7 +82,7 @@ def save_feature(args):
             labels = np.hstack((labels, label))
         iterations += 1
 
-    f = h5py.File('data/test_feat/train_feat.h5', 'w')
+    f = h5py.File('data/test_feat/img_train_feat.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -109,7 +109,7 @@ def save_feature(args):
             labels = np.hstack((labels, label))
         iterations += 1
 
-    f = h5py.File('data/test_feat/val_feat.h5', 'w')
+    f = h5py.File('data/test_feat/img_val_feat.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -130,9 +130,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Novel/novel_obj_train_before_feat.odgt')
+                        default='./data/ADE/ADE_Novel/novel_img_train.json')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Novel/novel_obj_val_before_feat.odgt')
+                        default='./data/ADE/ADE_Novel/novel_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
 

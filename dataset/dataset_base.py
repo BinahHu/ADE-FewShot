@@ -137,11 +137,11 @@ class BaseBaseDataset(Dataset):
 
     def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
         f = open(odgt, 'r')
-        self.old_list_sample = json.load(f)
+        old_list_sample = json.load(f)
         f.close()
 
         self.list_sample = []
-        iterator = filter(lambda x: len(x['anchors']) == 0 or len(x['anchors']))
+        iterator = filter(lambda x: len(x['anchors']) != 0, old_list_sample)
         for sample in iterator:
             self.list_sample.append(sample)
 
