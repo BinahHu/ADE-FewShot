@@ -121,10 +121,10 @@ class LearningModule(LearningModuleBase):
                     pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
                     labels = feed_dict['cls_label'][i, : anchor_num].long()
                     pred = pred.cuda()
-                    loss += crit['weight'] * crit['crit'](pred, labels)
-                    acc += self._acc(pred, labels, self.output)
                     instance_sum[0] += pred.shape[0]
-        return loss, acc, instance_sum
+                    loss += crit['weight'] * crit['crit'](pred, labels) * pred.shape[0]
+                    acc += self._acc(pred, labels, self.output) * pred.shape[0]
+        return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
 
 
 class NovelTuningModuleBase(nn.Module):

@@ -32,8 +32,6 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
 
     # main loop
     tic = time.time()
-    acc_iter = 0
-    acc_iter_num = 0 
     for i in range(args.train_epoch_iters):
         if mode=='warm':
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -46,12 +44,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         module.zero_grad()
         loss, acc, instances = module(batch_data)
         # print(loss)
-        instances = instances.detach().cpu()
-        acc = acc.detach().cpu()
-        loss = loss.mean()
-        acc = (acc * instances.float()).sum / instances.sum().float()
-        acc_iter += acc.data.item() * 100 * instances.sum().float()
-        acc_iter_num += instances.sum()
+        instances = instances.type_as(acc).detach()
+        acc = acc.detach()
+        loss = (loss * instances).sum() / instances.sum().float()
+        acc_actual = (acc * instances).sum() / instances.sum().float()
 
         # Backward
         loss.backward()
@@ -63,9 +59,9 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         tic = time.time()
 
         # update average loss and acc
-        ave_total_loss.update(loss.data.item())
-        for k in range(instances.sum()):
-            ave_acc.update(acc.data.item() * 100)
+        for k in range(int(instances.sum())):
+            ave_total_loss.update(loss.data.item())
+            ave_acc.update(acc_actual * 100)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
@@ -74,10 +70,8 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
                   .format(epoch, i, args.train_epoch_iters,
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
-            acc_iter = 0
-            acc_iter_num = 0
+                          ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
+            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_actual * 100}
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -99,36 +93,32 @@ def validate(module, iterator, history, epoch, args):
     module.eval()
     # main loop
     tic = time.time()
-    acc_iter = 0
-    acc_iter_num = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
         _, acc, instances = module(batch_data)
-        instances = instances.detach().cpu().float()
-        acc = acc.detach().cpu().float()
-        acc = (acc * instances).sum / instances.sum().float()
-        acc_iter += acc.data.item() * 100 * instances.sum().float()
-        acc_iter_num += instances.sum()
+        instances = instances.typa_as(acc).detach().cpu()
+        acc = acc.detach().cpu()
+        if max(acc) >= 1:
+            print(acc)
+        acc_actual = (acc * instances).sum() / instances.sum().float()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
         # update average loss and acc
-        for k in range(instances.sum()):
-            ave_acc.update(acc.data.item() * 100)
+        for k in range(int(instances.sum())):
+            ave_acc.update(acc_actual.data.item() * 100)
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
                     'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average(), acc_iter / acc_iter_num))
+                          ave_acc.average(), acc_actual * 100))
             
-            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
-            acc_iter = 0
-            acc_iter_num = 0
+            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_actual * 100}
             dispepoch = epoch
             if not args.iswarmup:
                 dispepoch += 1
@@ -279,8 +269,8 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
-    parser.add_argument('--crop_height', default=1)
-    parser.add_argument('--crop_width', default=1)
+    parser.add_argument('--crop_height', default=2)
+    parser.add_argument('--crop_width', default=2)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -295,7 +285,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_per_img', default=-1)
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
