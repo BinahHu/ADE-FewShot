@@ -202,7 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
     parser.add_argument('--arch', default='resnet18')
-    parser.add_argument('--cls', default='linear')
+    parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
 
     # Path related arguments
@@ -226,11 +226,13 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_cls', default=5.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_init', default='')
+    parser.add_argument('--crop_height', default=2)
+    parser.add_argument('--crop_width', default=2)
 
     # Data related arguments
     parser.add_argument('--num_class', default=293, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=4, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

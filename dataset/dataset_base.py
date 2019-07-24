@@ -213,3 +213,34 @@ class BaseBaseDataset(Dataset):
 
     def _get_sub_batch(self):
         return NotImplementedError
+
+
+class BaseNovelDataset(Dataset):
+    def __init__(self, h5path, opt, **kwargs):
+        self.feat_dim = opt.feat_dim
+        self.data_path = h5path
+        self.features = None
+        self.labels = None
+        self.num_sample = 0
+        self.data = None
+        self._get_feat_data()
+
+    def _get_feat_data(self):
+        f = h5py.File(self.data_path, 'r')
+        self.features = np.array(f['feature_map'])
+        self.labels = np.array(f['labels'])
+        self.num_sample = self.labels.size
+
+        self.data = [dict() for i in range(self.num_sample)]
+        for i in range(self.num_sample):
+            self.data[i] = {'feature': self.features[i],
+                            'label': self.labels[i]}
+
+    def __getitem__(self, index):
+        return NotImplementedError
+
+    def __len__(self):
+        return NotImplementedError
+
+    def _get_sub_batch(self):
+        return NotImplementedError

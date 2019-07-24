@@ -83,6 +83,10 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
             history['train']['epoch'].append(fractional_epoch)
             history['train']['loss'].append(loss.data.item())
             history['train']['acc'].append(ave_acc.average)
+        del loss
+        del acc_actual
+        del instances
+        del batch_data
 
 
 def validate(module, iterator, history, epoch, args):
@@ -126,6 +130,7 @@ def validate(module, iterator, history, epoch, args):
             fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
             history['val']['epoch'].append(fractional_epoch)
             history['val']['acc'].append(ave_acc.average())
+        del batch_data
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
 
 

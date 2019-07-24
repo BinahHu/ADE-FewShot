@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from roi_align.roi_align import  RoIAlign
+# from roi_align.roi_align import  RoIAlign
 from torch.autograd import Variable
 import numpy as np
 
@@ -54,5 +54,29 @@ class FC_Classifier(nn.Module):
         # print('Feature shape after view is {}'.format(feature.shape))
         pred = self.fc1(feature)
         # print('pred shape {}\n'.format(pred.shape))
+        anchor_index.detach()
+        anchors.detach()
+        del anchor_index, anchors
         return pred
 
+
+class Novel_Classifier(nn.Module):
+    def __init__(self, in_dim, num_class):
+        super(Novel_Classifier, self).__init__()
+        self.fc1 = nn.Linear(in_dim, num_class)
+        self.type = 'fc_cls'
+
+    def forward(self, x):
+        x = self.fc1(x)
+        return x
+
+    def _acc(self, pred, label, output='dumb'):
+        _, preds = torch.max(pred, dim=1)
+        valid = (label >= 0).long()
+        acc_sum = torch.sum(valid * (preds == label).long())
+        instance_sum = torch.sum(valid)
+        acc = acc_sum.float() / (instance_sum.float() + 1e-10)
+        if output == 'dumb':
+            return acc
+        elif output == 'vis':
+            return acc, pred, label
