@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# from roi_align.roi_align import  RoIAlign
+from roi_align.roi_align import  RoIAlign
 from torch.autograd import Variable
 import numpy as np
 
