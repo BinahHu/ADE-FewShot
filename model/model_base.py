@@ -61,6 +61,7 @@ class LearningModuleBase(nn.Module):
         instance_sum = torch.sum(valid)
         acc = acc_sum.float() / (instance_sum.float() + 1e-10)
         if output == 'dumb':
+            del pred
             return acc
         elif output == 'vis':
             return acc, pred, label
@@ -75,7 +76,6 @@ class LearningModuleBase(nn.Module):
         acc = acc_sum / (num + 1e-10)
         return acc
         """
-
 
 
 class LearningModule(LearningModuleBase):
@@ -97,17 +97,23 @@ class LearningModule(LearningModuleBase):
         batch_img_num = feature_map.shape[0]
 
         features = None
+        labels = None
         if self.output == 'feat':
             self.cls.output = 'feat'
             for i in range(batch_img_num):
                 anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
                 if anchor_num == 0 or anchor_num >= 100:
                     continue
-                feature = self.cls([feature_map[i], feed_dict['scales'[i]], feed_dict['anchors'][i], anchor_num])
+                feature = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
+                label = feed_dict['cls_label'][i, :anchor_num].long()
                 if features is None:
                     features = feature.clone()
+                    labels = label.clone()
                 else:
                     features = torch.stack((features, feature), dim=0)
+                    labels = torch.stack((labels, label), dim=0)
+            return features, labels
+
 
         instance_sum = torch.tensor([0]).cuda()
         for i in range(batch_img_num):
@@ -124,6 +130,7 @@ class LearningModule(LearningModuleBase):
                     instance_sum[0] += pred.shape[0]
                     loss += crit['weight'] * crit['crit'](pred, labels) * pred.shape[0]
                     acc += self._acc(pred, labels, self.output) * pred.shape[0]
+                    del pred
         return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
 
 

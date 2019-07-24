@@ -16,16 +16,16 @@ def save_feature(args):
     builder = ModelBuilder()
     feature_extractor_ = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier_ = builder.build_classification_layer(args)
-    network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
+    network_ = LearningModule(args, feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
     network_.load_state_dict(torch.load(args.model))
     torch.save(network_.module.state_dict(), 'tmp.pth')
 
     print('Real Loading Start')
-    feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
+    feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
-    network = LearningModule(feature_extractor, crit=[], cls=fc_classifier, output='feat')
+    network = LearningModule(args, feature_extractor, crit=[], cls=fc_classifier, output='feat')
     network.load_state_dict(torch.load('tmp.pth'))
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
@@ -164,6 +164,7 @@ if __name__ == '__main__':
                         help='if horizontally flip images when training')
     parser.add_argument('--sample_type', default='inst',
                         help='instance level or category level sampling')
+    parser.add_argument('--sample_per_img', default=-1)
 
 
     # Misc arguments
@@ -176,8 +177,9 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="",
+    parser.add_argument('--model', default="ckpt/crop/net_epoch_5.pth",
                         help='model to load')
+    parser.add_argument('--max_anchor_per_img', default=100)
 
     args = parser.parse_args()
 
