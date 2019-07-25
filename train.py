@@ -273,8 +273,8 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
-    parser.add_argument('--crop_height', default=2)
-    parser.add_argument('--crop_width', default=2)
+    parser.add_argument('--crop_height', default=3)
+    parser.add_argument('--crop_width', default=3)
 
     # Path related arguments
     parser.add_argument('--list_train',
