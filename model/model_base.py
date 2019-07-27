@@ -100,6 +100,7 @@ class LearningModule(LearningModuleBase):
 
         features = None
         labels = None
+        preds = None
         if self.output == 'feat':
             self.cls.output = 'feat'
             for i in range(batch_img_num):
@@ -116,6 +117,21 @@ class LearningModule(LearningModuleBase):
                     labels = torch.stack((labels, label), dim=0)
             return features, labels
 
+        if self.output == 'pred':
+            self.cls.output = 'pred'
+            for i in range(batch_img_num):
+                anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+                if anchor_num == 0 or anchor_num >= 100:
+                    continue
+                pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
+                label = feed_dict['cls_label'][i, :anchor_num].long()
+                if preds is None:
+                    preds = preds.clone()
+                    labels = label.clone()
+                else:
+                    preds = torch.stack((preds, pred), dim=0)
+                    labels = torch.stack((labels, label), dim=0)
+            return preds, labels
 
         instance_sum = torch.tensor([0]).cuda()
         for i in range(batch_img_num):

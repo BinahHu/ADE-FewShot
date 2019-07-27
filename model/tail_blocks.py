@@ -53,6 +53,8 @@ class FC_Classifier(nn.Module):
         feature = feature.view(-1, self.in_dim * self.crop_height * self.crop_width)
         # print('Feature shape after view is {}'.format(feature.shape))
         pred = self.fc1(feature)
+        if self.output == 'pred':
+            return pred
         # print('pred shape {}\n'.format(pred.shape))
         anchor_index.detach()
         anchors.detach()
