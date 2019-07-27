@@ -36,13 +36,6 @@ def save_feature(args):
     dataset_train.mode = 'val'
     dataset_val = ImgBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_val.mode = 'val'
-    dataloader_train = DataLoader(
-        dataset_train, batch_size=len(args.gpus), shuffle=False,
-        collate_fn=user_scattered_collate,
-        num_workers=int(args.workers),
-        drop_last=True,
-        pin_memory=True
-    )
     dataloader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -50,7 +43,6 @@ def save_feature(args):
         drop_last=True,
         pin_memory=True
     )
-    iter_train = iter(dataloader_train)
     iter_val = iter(dataloader_val)
 
     args.train_epoch_iters = \
@@ -61,57 +53,41 @@ def save_feature(args):
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
     iterations = 0
-    while iterations <= dataset_train.num_sample:
-        batch_data = next(iter_train)
-        if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, dataset_train.num_sample))
-        if iterations == 0:
-            features, labels = network(batch_data)
-            features = np.array(features.detach().cpu())
-            labels = np.array(labels.cpu())
-        elif iterations == args.train_epoch_iters:
-            features = features[:dataset_train.num_sample, :]
-            labels = labels[:dataset_train.num_sample]
-            break
-        else:
-            feature, label = network(batch_data)
-            feature = np.array(feature.detach().cpu())
-            label = np.array(label.cpu())
-
-            features = np.vstack((features, feature))
-            labels = np.hstack((labels, label))
-        iterations += 1
-
-    f = h5py.File('data/test_feat/img_train_feat.h5', 'w')
-    f.create_dataset('feature_map', data=features)
-    f.create_dataset('labels', data=labels)
-    f.close()
-
-    iterations = 0
     while iterations <= dataset_val.num_sample:
         batch_data = next(iter_val)
         if iterations % 10 == 0:
             print('{} / {}'.format(iterations, dataset_val.num_sample))
         if iterations == 0:
-            features, labels = network(batch_data)
-            features = np.array(features.detach().cpu())
+            preds, labels = network(batch_data)
+            preds = np.array(preds.detach().cpu())
             labels = np.array(labels.cpu())
+            anchors = np.array(batch_data['anchors'][:labels.size, :].cpu())
+            scales = np.array(batch_data['scales'][:label.size, :].cpu())
+
         elif iterations == args.val_epoch_iters:
-            features = features[:dataset_val.num_sample, :]
+            preds = preds[:dataset_val.num_sample, :]
             labels = labels[:dataset_val.num_sample]
+            anchors = batch_data['anchors'][:labels.size, :]
+            scales = batch_data['scales'][:label.size, :]
             break
         else:
-            feature, label = network(batch_data)
-            feature = np.array(feature.detach().cpu())
+            pred, label = network(batch_data)
+            pred = np.array(pred.detach().cpu())
             label = np.array(label.cpu())
+            anchor = np.array(batch_data['anchors'][:labels.size, :].cpu())
+            scale = np.array(batch_data['scales'][:label.size, :].cpu())
 
-            features = np.vstack((features, feature))
+            preds = np.vstack((preds, pred))
             labels = np.hstack((labels, label))
+            anchors = np.vstack((anchors, anchor))
+            scales = np.vstack((scales, scale))
         iterations += 1
 
-    f = h5py.File('data/test_feat/img_val_feat.h5', 'w')
-    f.create_dataset('feature_map', data=features)
+    f = h5py.File('case_study/pred_with_size.h5', 'w')
+    f.create_dataset('feature_map', data=preds)
     f.create_dataset('labels', data=labels)
+    f.create_dataset('anchors', data=anchors)
+    f.create_dataset('scales', data=scales)
     f.close()
 
     return None
@@ -130,9 +106,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Novel/novel_img_train.json')
+                        default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Novel/novel_img_val.json')
+                        default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
 
