@@ -321,9 +321,9 @@ if __name__ == '__main__':
                         help='input image size of short edge (int or list)')
     parser.add_argument('--imgMaxSize', default=1500, type=int,
                         help='maximum input image size of long edge')
-    parser.add_argument('--padding_constant', default=8, type=int,
+    parser.add_argument('--padding_constant', default=4, type=int,
                         help='maxmimum downsampling rate of the network')
-    parser.add_argument('--segm_downsampling_rate', default=8, type=int,
+    parser.add_argument('--segm_downsampling_rate', default=4, type=int,
                         help='downsampling rate of the segmentation label')
     parser.add_argument('--random_flip', default=True, type=bool,
                         help='if horizontally flip images when training')

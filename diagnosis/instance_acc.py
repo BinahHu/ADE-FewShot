@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../')
+
 import torch
 from dataset.base_dataset import ImgBaseDataset
 from dataset.dataloader import DataLoader
@@ -32,8 +35,6 @@ def save_feature(args):
     network.cuda()
     network.eval()
 
-    dataset_train = ImgBaseDataset(args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
-    dataset_train.mode = 'val'
     dataset_val = ImgBaseDataset(args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     dataset_val.mode = 'val'
     dataloader_val = DataLoader(
@@ -45,37 +46,34 @@ def save_feature(args):
     )
     iter_val = iter(dataloader_val)
 
-    args.train_epoch_iters = \
-        math.ceil(dataset_train.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
     args.val_epoch_iters = \
         math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
-    print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
     iterations = 0
-    while iterations <= dataset_val.num_sample:
+    while iterations <= args.val_epoch_iters:
         batch_data = next(iter_val)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, dataset_val.num_sample))
+            print('{} / {}'.format(iterations, args.val_epoch_iters))
         if iterations == 0:
             preds, labels = network(batch_data)
-            preds = np.array(preds.detach().cpu())
-            labels = np.array(labels.cpu())
-            anchors = np.array(batch_data['anchors'][:labels.size, :].cpu())
-            scales = np.array(batch_data['scales'][:label.size, :].cpu())
+            preds = np.array(preds)
+            labels = np.array(labels)
+            anchors = np.array(batch_data[0]['anchors'][:labels.size, :])
+            scales = np.array(batch_data[0]['scales'][:labels.size, :])
 
         elif iterations == args.val_epoch_iters:
             preds = preds[:dataset_val.num_sample, :]
             labels = labels[:dataset_val.num_sample]
-            anchors = batch_data['anchors'][:labels.size, :]
-            scales = batch_data['scales'][:label.size, :]
+            anchors = anchors[:dataset_val.num_sample, :]
+            scales = scales[:dataset_val.num_sample, :]
             break
         else:
             pred, label = network(batch_data)
-            pred = np.array(pred.detach().cpu())
-            label = np.array(label.cpu())
-            anchor = np.array(batch_data['anchors'][:labels.size, :].cpu())
-            scale = np.array(batch_data['scales'][:label.size, :].cpu())
+            pred = np.array(pred)
+            label = np.array(label)
+            anchor = np.array(batch_data[0]['anchors'][:label.size, :])
+            scale = np.array(batch_data[0]['scales'][:label.size, :])
 
             preds = np.vstack((preds, pred))
             labels = np.hstack((labels, label))
@@ -101,21 +99,21 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=2)
-    parser.add_argument('--crop_width', default=2)
+    parser.add_argument('--crop_height', default=3)
+    parser.add_argument('--crop_width', default=3)
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/ADE/ADE_Base/base_img_train.json')
+                        default='../data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
-                        default='./data/ADE/ADE_Base/base_img_val.json')
+                        default='../data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset',
-                        default='../')
+                        default='../../')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=1, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
     parser.add_argument('--train_epoch_iters', default=20, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
@@ -125,7 +123,7 @@ if __name__ == '__main__':
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type = int)
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=2, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -153,7 +151,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop/net_epoch_5.pth",
+    parser.add_argument('--model', default="../ckpt/crop_3/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

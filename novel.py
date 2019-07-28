@@ -226,8 +226,8 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_cls', default=5.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_init', default='')
-    parser.add_argument('--crop_height', default=2)
-    parser.add_argument('--crop_width', default=2)
+    parser.add_argument('--crop_height', default=3)
+    parser.add_argument('--crop_width', default=3)
 
     # Data related arguments
     parser.add_argument('--num_class', default=293, type=int,

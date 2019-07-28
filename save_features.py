@@ -61,10 +61,10 @@ def save_feature(args):
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
     iterations = 0
-    while iterations <= dataset_train.num_sample:
+    while iterations <= args.train_epoch_iters:
         batch_data = next(iter_train)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, dataset_train.num_sample))
+            print('{} / {}'.format(iterations, args.train_epoch_iters))
         if iterations == 0:
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
@@ -88,10 +88,10 @@ def save_feature(args):
     f.close()
 
     iterations = 0
-    while iterations <= dataset_val.num_sample:
+    while iterations <= args.val_epoch_iters:
         batch_data = next(iter_val)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, dataset_val.num_sample))
+            print('{} / {}'.format(iterations, args.val_epoch_iters))
         if iterations == 0:
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
@@ -125,8 +125,8 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=2)
-    parser.add_argument('--crop_width', default=2)
+    parser.add_argument('--crop_height', default=3)
+    parser.add_argument('--crop_width', default=3)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -177,7 +177,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop/net_epoch_5.pth",
+    parser.add_argument('--model', default="ckpt/crop_4/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

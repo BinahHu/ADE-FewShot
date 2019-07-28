@@ -123,14 +123,14 @@ class LearningModule(LearningModuleBase):
                 anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
                 if anchor_num == 0 or anchor_num >= 100:
                     continue
-                pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
-                label = feed_dict['cls_label'][i, :anchor_num].long()
+                pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num]).cpu().data
+                label = feed_dict['cls_label'][i, :anchor_num].long().cpu().data
                 if preds is None:
-                    preds = preds.clone()
-                    labels = label.clone()
+                    preds = np.array(pred)
+                    labels = np.array(label)
                 else:
-                    preds = torch.stack((preds, pred), dim=0)
-                    labels = torch.stack((labels, label), dim=0)
+                    preds = np.vstack((preds, np.array(pred)))
+                    labels = np.hstack((labels, np.array(label)))
             return preds, labels
 
         instance_sum = torch.tensor([0]).cuda()
