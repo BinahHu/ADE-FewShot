@@ -92,22 +92,27 @@ def save_feature(args):
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
             labels = np.array(labels.cpu())
-        elif iterations == args.val_epoch_iters:
-            features = features[:dataset_val.num_sample, :]
-            labels = labels[:dataset_val.num_sample]
-            break
+            anchors = np.array(batch_data[0]['anchors'][0, :labels.size, :])
+            scales = np.tile(np.array(batch_data[0]['scales']), (labels.size, 1))
+
         else:
             feature, label = network(batch_data)
             feature = np.array(feature.detach().cpu())
             label = np.array(label.cpu())
+            anchor = np.array(batch_data[0]['anchors'][0, :label.size, :])
+            scale = np.tile(np.array(batch_data[0]['scales'][:label.size, :]), (label.size, 1))
 
             features = np.vstack((features, feature))
             labels = np.hstack((labels, label))
+            anchors = np.vstack((anchors, anchor))
+            scales = np.vstack((scales, scale))
         iterations += 1
 
     f = h5py.File('data/test_feat/img_val_feat.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
+    f.create_dataset('anchors', data=anchors)
+    f.create_dataset('scales', data=scales)
     f.close()
 
     return None
@@ -173,7 +178,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop_4/net_epoch_11.pth",
+    parser.add_argument('--model', default="ckpt/crop_3/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

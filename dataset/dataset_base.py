@@ -229,12 +229,18 @@ class BaseNovelDataset(Dataset):
         f = h5py.File(self.data_path, 'r')
         self.features = np.array(f['feature_map'])
         self.labels = np.array(f['labels'])
+        if 'anchors' in f.keys():
+            self.anchors = np.array(f['anchors'])
+        if 'scales' in f.keys():
+            self.scales = np.array(f['scales'])
         self.num_sample = self.labels.size
 
         self.data = [dict() for i in range(self.num_sample)]
         for i in range(self.num_sample):
             self.data[i] = {'feature': self.features[i],
-                            'label': self.labels[i]}
+                            'label': self.labels[i],
+                            'anchors': self.anchors[i],
+                            'scales': self.scales[i]}
 
     def __getitem__(self, index):
         return NotImplementedError

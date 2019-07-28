@@ -60,13 +60,19 @@ class ObjNovelDataset(BaseNovelDataset):
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_features = torch.zeros(self.batch_per_gpu, self.feat_dim * self.crop_width * self.crop_height)
         batch_labels = torch.zeros(self.batch_per_gpu).int()
+        batch_anchors = torch.zeros(self.batch_per_gpu, 4)
+        batch_scales = torch.zeros(self.batch_per_gpu, 2)
         for i in range(self.batch_per_gpu):
             batch_features[i] = torch.tensor(batch_records[i]['feature']).view(-1)
             batch_labels[i] = torch.tensor(batch_records[i]['label'].astype(np.float)).int()
+            batch_anchors[i] = torch.tensor(batch_records[i]['anchors'])
+            batch_scales[i] = torch.tensor(batch_records[i]['scales'])
 
         output = dict()
         output['feature'] = batch_features
         output['label'] = batch_labels
+        output['anchors'] = batch_anchors
+        output['scales'] = batch_scales
         return output
 
     def __len__(self):

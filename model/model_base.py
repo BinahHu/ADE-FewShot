@@ -187,6 +187,7 @@ class NovelTuningModule(NovelTuningModuleBase):
         self.cls = cls
         self.seg = seg
         self.crit = crit
+        self.output = 'dumb'
 
     def forward(self, feed_dict):
         acc = 0
@@ -198,7 +199,8 @@ class NovelTuningModule(NovelTuningModuleBase):
             feature = feed_dict['feature']
             if crit['type'] == 'cls':
                 pred = self.cls(feature)
-
+            if self.output != 'dumb':
+                return pred
             loss += crit['weight'] * crit['crit'](pred, label)
             acc += self._acc(pred, label)
 
