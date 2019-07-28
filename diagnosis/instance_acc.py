@@ -59,21 +59,14 @@ def save_feature(args):
             preds, labels = network(batch_data)
             preds = np.array(preds)
             labels = np.array(labels)
-            anchors = np.array(batch_data[0]['anchors'][:labels.size, :])
-            scales = np.array(batch_data[0]['scales'][:labels.size, :])
-
-        elif iterations == args.val_epoch_iters:
-            preds = preds[:dataset_val.num_sample, :]
-            labels = labels[:dataset_val.num_sample]
-            anchors = anchors[:dataset_val.num_sample, :]
-            scales = scales[:dataset_val.num_sample, :]
-            break
+            anchors = np.array(batch_data[0]['anchors'][0, :labels.size, :])
+            scales = np.tile(np.array(batch_data[0]['scales']), (labels.size, 1))
         else:
             pred, label = network(batch_data)
             pred = np.array(pred)
             label = np.array(label)
-            anchor = np.array(batch_data[0]['anchors'][:label.size, :])
-            scale = np.array(batch_data[0]['scales'][:label.size, :])
+            anchor = np.array(batch_data[0]['anchors'][0, :label.size, :])
+            scale = np.tile(np.array(batch_data[0]['scales'][:label.size, :]), (label.size, 1))
 
             preds = np.vstack((preds, pred))
             labels = np.hstack((labels, label))
@@ -81,8 +74,8 @@ def save_feature(args):
             scales = np.vstack((scales, scale))
         iterations += 1
 
-    f = h5py.File('case_study/pred_with_size.h5', 'w')
-    f.create_dataset('feature_map', data=preds)
+    f = h5py.File('case_study/val_img.h5', 'w')
+    f.create_dataset('preds', data=preds)
     f.create_dataset('labels', data=labels)
     f.create_dataset('anchors', data=anchors)
     f.create_dataset('scales', data=scales)
@@ -113,7 +106,7 @@ if __name__ == '__main__':
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=1, type=int,
                         help='input batch size')
     parser.add_argument('--train_epoch_iters', default=20, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')

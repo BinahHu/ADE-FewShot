@@ -69,10 +69,6 @@ def save_feature(args):
             features, labels = network(batch_data)
             features = np.array(features.detach().cpu())
             labels = np.array(labels.cpu())
-        elif iterations == args.train_epoch_iters:
-            features = features[:dataset_train.num_sample, :]
-            labels = labels[:dataset_train.num_sample]
-            break
         else:
             feature, label = network(batch_data)
             feature = np.array(feature.detach().cpu())
