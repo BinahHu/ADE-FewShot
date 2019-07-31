@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='resnet50')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3)
@@ -178,7 +178,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop_3/net_epoch_11.pth",
+    parser.add_argument('--model', default="ckpt/crop_res50/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

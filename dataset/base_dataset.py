@@ -70,7 +70,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        this_short_size = 500
+        this_short_size = 800
 
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample

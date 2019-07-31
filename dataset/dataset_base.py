@@ -238,9 +238,9 @@ class BaseNovelDataset(Dataset):
         self.data = [dict() for i in range(self.num_sample)]
         for i in range(self.num_sample):
             self.data[i] = {'feature': self.features[i],
-                            'label': self.labels[i],
-                            'anchors': self.anchors[i],
-                            'scales': self.scales[i]}
+                            'label': self.labels[i]}
+                            # 'anchors': self.anchors[i],
+                            # 'scales': self.scales[i]}
 
     def __getitem__(self, index):
         return NotImplementedError

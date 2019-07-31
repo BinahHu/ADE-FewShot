@@ -65,14 +65,14 @@ class ObjNovelDataset(BaseNovelDataset):
         for i in range(self.batch_per_gpu):
             batch_features[i] = torch.tensor(batch_records[i]['feature']).view(-1)
             batch_labels[i] = torch.tensor(batch_records[i]['label'].astype(np.float)).int()
-            batch_anchors[i] = torch.tensor(batch_records[i]['anchors'])
-            batch_scales[i] = torch.tensor(batch_records[i]['scales'])
+            # batch_anchors[i] = torch.tensor(batch_records[i]['anchors'])
+            # batch_scales[i] = torch.tensor(batch_records[i]['scales'])
 
         output = dict()
         output['feature'] = batch_features
         output['label'] = batch_labels
-        output['anchors'] = batch_anchors
-        output['scales'] = batch_scales
+        # output['anchors'] = batch_anchors
+        # output['scales'] = batch_scales
         return output
 
     def __len__(self):
