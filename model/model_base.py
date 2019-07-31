@@ -5,7 +5,9 @@ from model.tail_blocks import FC_Classifier, FC_Classifier2, Cos_Classifier
 from model.resnet import resnet18
 import math
 import numpy as np
+import json
 
+attr_table = json.load(open("/home/zhu2/ADE-FewShot/data/ADE/ADE_Origin/attr.json"))
 
 class ModelBuilder():
     # weight initialization
@@ -44,6 +46,15 @@ class ModelBuilder():
         classifier.apply(self.weights_init)
         return classifier
 
+    def build_embedding_layer(self, args):
+        feat_dim = args.feat_dim
+        num_attr = args.num_attr
+        if args.is_soft:
+            embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
+        else:
+            embedder = nn.Embedding(num_attr+1, feat_dim, padding_idx=0)
+        return embedder
+
 
 class LearningModuleBase(nn.Module):
     def __init__(self):
@@ -78,7 +89,7 @@ class LearningModuleBase(nn.Module):
 
 
 class LearningModule(LearningModuleBase):
-    def __init__(self, args, feature_extractor, crit, cls=None, seg=None, output='dumb'):
+    def __init__(self, args, feature_extractor, crit, cls=None, embed=None, seg=None, output='dumb'):
         super(LearningModule, self).__init__()
         self.feature_extractor = feature_extractor
         self.cls = cls
@@ -86,26 +97,62 @@ class LearningModule(LearningModuleBase):
         self.crit = crit
         self.output = output
         self.losstype = args.loss
+        self.embd = embed
+        self.attr_array = []
+        self.num_attr = args.num_attr
+        #for i in args.gpus:
+        #    self.attr_array.append(torch.zeros(args.batch_size_per_gpu, args.num_attr).long().cuda(i))
 
     def forward(self, feed_dict, mode='train', output='dumb'):
         feature_map = self.feature_extractor(feed_dict['img_data'])
         acc = 0
         loss = 0
+        accFlag = False
         for crit in self.crit:
+            #Ignore
             if crit['weight'] == 0:
                 continue
-            if self.losstype == "Multi":
-                label = feed_dict['{type}_label'.format(type=crit['type'])].float()
-            else:
+
+            #Load Label
+            if crit['type'] != 'attr':
                 label = feed_dict['{type}_label'.format(type=crit['type'])].long()
+            else:
+                label = feed_dict['cls_label'].long()
+
+            #cls layer, get pred
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
-            loss += crit['weight'] * crit['crit'](pred, label)
+            elif crit['type'] == 'attr':
+                pred = self.cls(feature_map)
+
+            #loss
+            if crit['type'] == 'attr' and self.losstype == 'Attr':
+                #attributes = self.attr_array[torch.cuda.current_device()]
+                #attributes.zero_()
+                attributes = torch.zeros(label.size(0), self.num_attr).long().cuda()
+                for i in range(label.size(0)):
+                    cat_id = label[i].item()
+                    attrs = attr_table[cat_id]
+                    for attr in attrs:
+                        attributes[i][attr] = 1.0
+                embedvec = self.embd(attributes)
+                embedvec = embedvec.sum(1).squeeze()
+
+                attr_loss, orth_loss = crit['crit'](feature_map, embedvec)
+                loss += crit['weight'] * attr_loss
+            else:
+                loss_cls = crit['weight'] * crit['crit'](pred, label)
+                loss += loss_cls
+
+            #acc
+            if accFlag:
+                continue
             if self.output == 'dumb':
                 acc += self._acc(pred, label, self.output)
             else:
                 acc_iter, preds, labels = self._acc(pred, label, self.output)
                 acc += acc_iter
+            accFlag = True
         if self.output == 'dumb':
             return loss, acc
         elif self.output == 'vis':

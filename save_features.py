@@ -16,7 +16,8 @@ def save_feature(args):
     builder = ModelBuilder()
     feature_extractor_ = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier_ = builder.build_classification_layer(args)
-    network_ = LearningModule(feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
+    embedder = builder.build_embedding_layer(args)
+    network_ = LearningModule(args=args, feature_extractor=feature_extractor_, crit=[], cls=fc_classifier_, output='feat', embed=embedder)
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
     network_.load_state_dict(torch.load(args.model))
@@ -25,7 +26,7 @@ def save_feature(args):
     print('Real Loading Start')
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier = builder.build_classification_layer(args)
-    network = LearningModule(feature_extractor, crit=[], cls=fc_classifier, output='feat')
+    network = LearningModule(args=args, feature_extractor=feature_extractor_, crit=[], cls=fc_classifier, output='feat', embed=embedder)
     network.load_state_dict(torch.load('tmp.pth'))
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
@@ -144,6 +145,9 @@ if __name__ == '__main__':
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--weight_init', default='')
+    parser.add_argument('--loss', default='CE')
+    parser.add_argument('--num_attr', default=386, type=int)
+    parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type = int)

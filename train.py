@@ -18,6 +18,7 @@ from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
 
 from loss.focal import FocalLoss
+from loss.Generic import GenericLoss
 
 from logger import Logger
 
@@ -171,19 +172,33 @@ def main(args):
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     classifier = builder.build_classification_layer(args)
+    embedder = builder.build_embedding_layer(args)
     print("Loss = " + args.loss)
+
+
     if args.loss == 'CE':
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     elif args.loss == 'Focal':
         crit_cls = FocalLoss(class_num = args.num_class, dev_num = len(args.gpus))
     elif args.loss == 'Multi':
         crit_cls = nn.BCEWithLogitsLoss()
+    elif args.loss == "Attr":
+        crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
     else:
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
 
+    if args.loss == "Attr":
+        crit_attr = GenericLoss(args.feat_dim, args.is_soft, num_attr=args.num_attr)
+        weirght_attr = args.attr_weight
+    else:
+        crit_attr = None
+        weirght_attr = 0
+
+
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
-            {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
+            {'type': 'seg', 'crit': crit_seg, 'weight': 0},
+            {'type': 'attr', 'crit': crit_attr, 'weight': weirght_attr}]
 
     if args.mask:
         args.list_train = args.list_train[:-5] + "_mask" + args.list_train[-5:]
@@ -222,14 +237,7 @@ def main(args):
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
 
-    optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(classifier.parameters(),
-                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
-    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
-
-    network = LearningModule(args, feature_extractor, crit, classifier)
+    network = LearningModule(args, feature_extractor, crit, cls=classifier, embed=embedder)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     if args.weight_init != '':
@@ -237,6 +245,17 @@ def main(args):
             torch.load(args.weight_init))
 
     network.cuda()
+
+    optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
+                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizer_cls = torch.optim.SGD(classifier.parameters(),
+                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizer_embd = torch.optim.SGD(embedder.parameters(),
+                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls, optimizer_embd]
+    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
+
+
 
     if args.log != '':
         network.load_state_dict(
@@ -264,7 +283,9 @@ def main(args):
                                      lr=args.lr_feat, momentum=0.9, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.9, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizer_embd = torch.optim.SGD(embedder.parameters(),
+                                    lr=args.lr_cls, momentum=0.9, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls, optimizer_embd]
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, history, epoch, args, mode='train')
         validate(network, iterator_val, history, epoch, args)
@@ -283,6 +304,11 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512, type=int)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
+    parser.add_argument('--num_attr', default=386, type=int)
+    parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
+    parser.add_argument('--attr_weight', default=0, type=float, help='Weight of the attribute loss')
+    parser.add_argument('--orth_weight', default=0, type=float, help='Weight of the orthogonality')
+
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -293,7 +319,8 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
+    torch.cuda.set_device(1)
+    parser.add_argument('--gpus', default=[1],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
@@ -349,5 +376,4 @@ if __name__ == '__main__':
                         help='add comment to this train')
 
     args = parser.parse_args()
-
     main(args)
