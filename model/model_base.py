@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from model.feature_extractor import LeNet
 from model.tail_blocks import Novel_Classifier, FC_Classifier
-from model.resnet import resnet18
+from model.resnet import resnet18, resnet50
 import math
 import numpy as np
 import random
@@ -25,6 +25,8 @@ class ModelBuilder():
             feature_extractor = LeNet()
         elif arch == 'resnet18':
             feature_extractor = resnet18()
+        elif arch == 'resnet50':
+            feature_extractor = resnet50()
 
         feature_extractor.apply(self.weights_init)
         if len(weights) > 0:
