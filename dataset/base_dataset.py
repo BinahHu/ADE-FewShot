@@ -79,6 +79,8 @@ class ImgBaseDataset(BaseBaseDataset):
         batch_anchor_num = np.zeros(self.batch_per_gpu)
         batch_labels = np.zeros((self.batch_per_gpu, self.max_anchor_per_img))
         batch_anchors = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, 4))
+        if self.loss == 'attr':
+            batch_attr = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, self.attr_num)).astype(np.int)
         for i in range(self.batch_per_gpu):
             img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
             this_scale = min(
@@ -117,8 +119,13 @@ class ImgBaseDataset(BaseBaseDataset):
             anchor_num = min(len(anchors), self.max_anchor_per_img)
             batch_anchor_num[i] = anchor_num
             for j in range(anchor_num):
-                batch_labels[i, j] = int(anchors[j]['cls_label'])
+                label = int(anchors[j]['cls_label'])
+                batch_labels[i, j] = label
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
+                if self.loss == 'attr':
+                    attrs = self.attr_dic[label]
+                    for location in attrs:
+                        batch_attr[i, j, location] = 1
 
         output = dict()
         output['img_data'] = batch_images
@@ -126,6 +133,8 @@ class ImgBaseDataset(BaseBaseDataset):
         output['cls_label'] = torch.tensor(batch_labels)
         output['anchors'] = torch.tensor(batch_anchors)
         output['anchor_num'] = torch.tensor(batch_anchor_num)
+        if self.loss == 'attr':
+            output['attr'] = torch.tensor(batch_attr)
 
         return output
 

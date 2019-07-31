@@ -130,6 +130,11 @@ class BaseBaseDataset(Dataset):
         self.parse_input_list(odgt, **kwargs)
         self.mode = None
 
+        self.loss = opt.loss
+        self.attr_path = opt.attr_path
+        self.attr_dic = None
+        self.attr_num = opt.num_attr
+
         # mean and std
         self.normalize = transforms.Normalize(
             mean=[102.9801, 115.9465, 122.7717],
@@ -153,6 +158,11 @@ class BaseBaseDataset(Dataset):
         self.num_sample = len(self.list_sample)
         assert self.num_sample > 0
         print('# samples: {}'.format(self.num_sample))
+
+        if self.loss == 'attr':
+            f = open(self.attr_path, 'r')
+            attr_dic = json.load(f)
+            self.attr_dic = attr_dic
 
     def random_crop(self, img, size=(224, 224), box=None):
         if box is not None:

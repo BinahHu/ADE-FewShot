@@ -12,7 +12,7 @@ import torch.nn as nn
 from dataset.base_dataset import ImgBaseDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoaderIter, DataLoader
-from utils import  AverageMeter, parse_devices
+from utils import AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
@@ -276,6 +276,11 @@ if __name__ == '__main__':
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
 
+    parser.add_argument('--num_attr', default=386, type=int)
+    parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
+    parser.add_argument('--attr_weight', default=0, type=float, help='Weight of the attribute loss')
+    parser.add_argument('--orth_weight', default=0, type=float, help='Weight of the orthogonality')
+
     # Path related arguments
     parser.add_argument('--list_train',
                         default='./data/ADE/ADE_Base/base_img_train.json')
@@ -283,6 +288,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
+    parser.add_argument('--attr_path', default='data/ADE/ADE_Origin/attr.json')
 
     # Train parameters
     parser.add_argument('--max_anchor_per_img', default=100)

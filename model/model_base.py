@@ -40,14 +40,18 @@ class ModelBuilder():
             classifier = FC_Classifier(args, args.feat_dim)
         elif args.cls == 'novel_cls':
             classifier = Novel_Classifier(args.feat_dim * args.crop_height * args.crop_width, args.num_class)
-        elif args.cls == 'linear2':
-            classifier = FC_Classifier2(args.feat_dim, 256, args.num_class)
-        elif args.cls == 'cos':
-            classifier = FC_Classifier(args.feat_dim, args.num_class)
-        else:
-            classifier = FC_Classifier(args, args.feat_dim)
+
         classifier.apply(self.weights_init)
         return classifier
+
+    def build_embedding_layer(self, args):
+        feat_dim = args.feat_dim
+        num_attr = args.num_attr
+        if args.is_soft:
+            embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
+        else:
+            embedder = nn.Embedding(num_attr + 1, feat_dim, padding_idx=0)
+        return embedder
 
 
 class LearningModuleBase(nn.Module):
@@ -83,12 +87,13 @@ class LearningModuleBase(nn.Module):
 
 
 class LearningModule(LearningModuleBase):
-    def __init__(self, args, feature_extractor, crit, cls=None, seg=None, output='dumb'):
+    def __init__(self, args, feature_extractor, crit, cls=None, embed=None, seg=None, output='dumb'):
         super(LearningModule, self).__init__()
         self.feature_extractor = feature_extractor
         self.cls = cls
         self.seg = seg
         self.crit = crit
+        self.embd = embed
         self.output = output
         self.sample_per_img = args.sample_per_img
 
