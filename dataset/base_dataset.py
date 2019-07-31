@@ -70,7 +70,7 @@ class ImgBaseDataset(BaseBaseDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        this_short_size = 800
+        this_short_size = 200
 
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
@@ -80,7 +80,7 @@ class ImgBaseDataset(BaseBaseDataset):
         batch_labels = np.zeros((self.batch_per_gpu, self.max_anchor_per_img))
         batch_anchors = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, 4))
         if self.loss == 'attr':
-            batch_attr = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, self.attr_num)).astype(np.int)
+            batch_attr = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, self.attr_num))
         for i in range(self.batch_per_gpu):
             img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
             this_scale = min(

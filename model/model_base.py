@@ -48,9 +48,9 @@ class ModelBuilder():
         feat_dim = args.feat_dim
         num_attr = args.num_attr
         if args.is_soft:
-            embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
+            embedder = nn.Embedding(num_attr, feat_dim * args.crop_height * args.crop_width, padding_idx=0)
         else:
-            embedder = nn.Embedding(num_attr + 1, feat_dim, padding_idx=0)
+            embedder = nn.Embedding(num_attr, feat_dim * args.crop_height * args.crop_width, padding_idx=0)
         return embedder
 
 
@@ -96,6 +96,7 @@ class LearningModule(LearningModuleBase):
         self.embd = embed
         self.output = output
         self.sample_per_img = args.sample_per_img
+        self.loss_type = args.loss
 
     def forward(self, feed_dict, mode='train', output='dumb'):
         # print(feed_dict['img_data'].shape)
@@ -142,20 +143,27 @@ class LearningModule(LearningModuleBase):
 
         instance_sum = torch.tensor([0]).cuda()
         for i in range(batch_img_num):
+            anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+            if anchor_num == 0 or anchor_num >= 100:
+                continue
+            pred, feature = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
+            labels = feed_dict['cls_label'][i, : anchor_num].long()
+            instance_sum[0] += pred.shape[0]
+            pred = pred.cuda()
+            feature = feature.cuda()
+
             for crit in self.crit:
                 if crit['weight'] == 0:
                     continue
-                if self.sample_per_img == -1:  # all the samples are used up
-                    anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
-                    if anchor_num == 0 or anchor_num >= 100:
-                        continue
-                    pred = self.cls([feature_map[i], feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num])
-                    labels = feed_dict['cls_label'][i, : anchor_num].long()
-                    pred = pred.cuda()
-                    instance_sum[0] += pred.shape[0]
+                if self.loss_type == 'attr' and crit['type'] == 'attr':
+                    attributes = feed_dict['attr'][i][:anchor_num].long()
+                    embedvec = self.embd(attributes)
+                    embedvec = embedvec.sum(1)
+                    attr_loss, orth_loss = crit['crit'](feature, embedvec)
+                    loss += crit['weight'] * attr_loss * pred.shape[0]
+                if crit['type'] == 'cls':
                     loss += crit['weight'] * crit['crit'](pred, labels) * pred.shape[0]
                     acc += self._acc(pred, labels, self.output) * pred.shape[0]
-                    del pred
         return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
 
 

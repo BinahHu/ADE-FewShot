@@ -59,7 +59,7 @@ class FC_Classifier(nn.Module):
         anchor_index.detach()
         anchors.detach()
         del anchor_index, anchors
-        return pred
+        return pred, feature
 
 
 class Novel_Classifier(nn.Module):

@@ -123,11 +123,17 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet50')
+    parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--loss', default='CE')
+
+    parser.add_argument('--num_attr', default=386, type=int)
+    parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
+    parser.add_argument('--attr_weight', default=0.1, type=float, help='Weight of the attribute loss')
+    parser.add_argument('--orth_weight', default=0, type=float, help='Weight of the orthogonality')
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -136,6 +142,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Novel/novel_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
+    parser.add_argument('--attr_path', default='data/ADE/ADE_Origin/attr.json')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
@@ -178,7 +185,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop_res50/net_epoch_11.pth",
+    parser.add_argument('--model', default="ckpt/crop_18_800/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

@@ -16,6 +16,7 @@ from utils import AverageMeter, parse_devices
 
 from model.model_base import ModelBuilder, LearningModule
 from model.parallel.replicate import patch_replication_callback
+from loss.Generic import GenericLoss
 
 from loss.focal import FocalLoss
 
@@ -170,6 +171,8 @@ def main(args):
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     classifier = builder.build_classification_layer(args)
+    embedder = builder.build_embedding_layer(args)
+    print("Loss = " + args.loss)
 
     if args.loss == 'CE':
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
@@ -178,9 +181,16 @@ def main(args):
     else:
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
 
+
+    weight_attr = 0
+    crit_attr = None
+    if args.loss == 'attr':
+        crit_attr = GenericLoss(args.feat_dim, args.is_soft, num_attr=args.num_attr)
+        weight_attr = args.attr_weight
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
-            {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
+            {'type': 'seg', 'crit': crit_seg, 'weight': 0},
+            {'type': 'attr', 'crit': crit_attr, 'weight': weight_attr}]
 
     dataset_train = ImgBaseDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
@@ -219,10 +229,12 @@ def main(args):
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizer_embd = torch.optim.SGD(embedder.parameters(),
+                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls, optimizer_embd]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
-    network = LearningModule(args, feature_extractor, crit, classifier)
+    network = LearningModule(args, feature_extractor, crit, embed=embedder, cls=classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -272,13 +284,13 @@ if __name__ == '__main__':
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
-    parser.add_argument('--loss', default='CE', help='specific the training loss')
+    parser.add_argument('--loss', default='attr', help='specific the training loss')
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
 
     parser.add_argument('--num_attr', default=386, type=int)
     parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
-    parser.add_argument('--attr_weight', default=0, type=float, help='Weight of the attribute loss')
+    parser.add_argument('--attr_weight', default=0.1, type=float, help='Weight of the attribute loss')
     parser.add_argument('--orth_weight', default=0, type=float, help='Weight of the orthogonality')
 
     # Path related arguments
@@ -297,7 +309,7 @@ if __name__ == '__main__':
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=1, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=2, type=int,
                         help='epochs to train for')
@@ -320,7 +332,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

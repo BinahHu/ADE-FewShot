@@ -124,16 +124,17 @@ class BaseBaseDataset(Dataset):
         # parse options
         self.imgSize = opt.imgSize
         self.imgMaxSize = opt.imgMaxSize
-        # max down sampling rate of network to avoid rounding during conv or pooling
-        self.padding_constant = opt.padding_constant
-        # parse the input list
-        self.parse_input_list(odgt, **kwargs)
-        self.mode = None
 
         self.loss = opt.loss
         self.attr_path = opt.attr_path
         self.attr_dic = None
         self.attr_num = opt.num_attr
+
+        # max down sampling rate of network to avoid rounding during conv or pooling
+        self.padding_constant = opt.padding_constant
+        # parse the input list
+        self.parse_input_list(odgt, **kwargs)
+        self.mode = None
 
         # mean and std
         self.normalize = transforms.Normalize(
