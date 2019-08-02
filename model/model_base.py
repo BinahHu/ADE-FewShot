@@ -119,11 +119,15 @@ class LearningModule(LearningModuleBase):
             else:
                 label = feed_dict['cls_label'].long()
 
+
+
             #cls layer, get pred
             if crit['type'] == 'cls':
                 pred = self.cls(feature_map)
             elif crit['type'] == 'attr':
                 pred = self.cls(feature_map)
+
+
 
             #loss
             if crit['type'] == 'attr' and self.losstype == 'Attr':
@@ -137,7 +141,6 @@ class LearningModule(LearningModuleBase):
                         attributes[i][attr] = 1.0
                 embedvec = self.embd(attributes)
                 embedvec = embedvec.sum(1).squeeze()
-
                 attr_loss, orth_loss = crit['crit'](feature_map, embedvec)
                 loss += crit['weight'] * attr_loss
             else:
@@ -153,6 +156,7 @@ class LearningModule(LearningModuleBase):
                 acc_iter, preds, labels = self._acc(pred, label, self.output)
                 acc += acc_iter
             accFlag = True
+
         if self.output == 'dumb':
             return loss, acc
         elif self.output == 'vis':

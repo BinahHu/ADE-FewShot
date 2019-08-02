@@ -55,7 +55,6 @@ def train(module, iterator, optimizers, history, epoch, args, mode='warm'):
         loss.backward()
         for optimizer in optimizers:
             optimizer.step()
-
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
@@ -158,7 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 4 or epoch == 8) and iteration == 0:
+    if (epoch == 3 or epoch == 8) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -319,8 +318,7 @@ if __name__ == '__main__':
                         default='../')
 
     # optimization related arguments
-    torch.cuda.set_device(1)
-    parser.add_argument('--gpus', default=[1],
+    parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
