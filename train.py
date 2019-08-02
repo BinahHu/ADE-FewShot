@@ -280,17 +280,17 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='resnet50')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
-    parser.add_argument('--loss', default='attr', help='specific the training loss')
+    parser.add_argument('--loss', default='CE', help='specific the training loss')
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
 
     parser.add_argument('--num_attr', default=386, type=int)
     parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
-    parser.add_argument('--attr_weight', default=0.1, type=float, help='Weight of the attribute loss')
+    parser.add_argument('--attr_weight', default=0.0, type=float, help='Weight of the attribute loss')
     parser.add_argument('--orth_weight', default=0, type=float, help='Weight of the orthogonality')
 
     # Path related arguments
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=1, type=int,
+    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
                         help='input batch size')
     parser.add_argument('--num_epoch', default=2, type=int,
                         help='epochs to train for')
@@ -326,13 +326,13 @@ if __name__ == '__main__':
 
     # Warm up
     parser.add_argument('--warm_up_epoch', type=int, default=1)
-    parser.add_argument('--warm_up_factor', default=0.001)
+    parser.add_argument('--warm_up_factor', default=0.0001)
     parser.add_argument('--warm_up_iters', default=100)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
