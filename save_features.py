@@ -16,7 +16,8 @@ def save_feature(args):
     builder = ModelBuilder()
     feature_extractor_ = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     fc_classifier_ = builder.build_classification_layer(args)
-    network_ = LearningModule(args, feature_extractor_, crit=[], cls=fc_classifier_, output='feat')
+    embed_ = builder.build_embedding_layer(args)
+    network_ = LearningModule(args, feature_extractor_, crit=[], embed=embed_, cls=fc_classifier_, output='feat')
     network_ = UserScatteredDataParallel(network_)
     patch_replication_callback(network_)
     network_.load_state_dict(torch.load(args.model))
@@ -25,7 +26,8 @@ def save_feature(args):
     print('Real Loading Start')
     feature_extractor = builder.build_feature_extractor(arch=args.arch)
     fc_classifier = builder.build_classification_layer(args)
-    network = LearningModule(args, feature_extractor, crit=[], cls=fc_classifier, output='feat')
+    embed = builder.build_embedding_layer(args)
+    network = LearningModule(args, feature_extractor, crit=[], embed=embed, cls=fc_classifier, output='feat')
     network.load_state_dict(torch.load('tmp.pth'))
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
@@ -123,7 +125,7 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='resnet50')
     parser.add_argument('--cls', default='linear')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3)
@@ -185,7 +187,7 @@ if __name__ == '__main__':
                         help='dir to save train and val log')
     parser.add_argument('--comment', default="",
                         help='add comment to this train')
-    parser.add_argument('--model', default="ckpt/crop_18_800/net_epoch_11.pth",
+    parser.add_argument('--model', default="ckpt/crop_res_50/net_epoch_11.pth",
                         help='model to load')
     parser.add_argument('--max_anchor_per_img', default=100)
 

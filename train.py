@@ -158,7 +158,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 3 or epoch == 6 or epoch == 9) and iteration == 0:
+    if (epoch == 4 or epoch == 6 or epoch == 8) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -285,8 +285,8 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--loss', default='CE', help='specific the training loss')
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=1)
+    parser.add_argument('--crop_width', default=1)
 
     parser.add_argument('--num_attr', default=386, type=int)
     parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
