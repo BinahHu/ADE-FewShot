@@ -6,7 +6,6 @@ from model.resnet import resnet18
 import math
 import numpy as np
 import json
-import time
 
 attr_table = json.load(open("/home/zhu2/ADE-FewShot/data/ADE/ADE_Origin/attr.json"))
 
