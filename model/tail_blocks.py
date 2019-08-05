@@ -21,7 +21,7 @@ class FC_Classifier(nn.Module):
         self.crop_width = args.crop_width
         self.roi_align = RoIAlign(args.crop_height, args.crop_width, transform_fpcoor=True)
         self.num_class = args.num_class
-        self.down_sampling_rate = args.segm_downsampling_rate
+        self.down_sampling_rate = args.down_sampling_rate
         self.in_dim = in_dim
         self.fc1 = nn.Linear(in_dim * self.crop_width * self.crop_height, self.num_class)
         self.type = 'fc_cls'

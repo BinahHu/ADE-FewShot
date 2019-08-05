@@ -18,7 +18,6 @@ class BaseDataset(BaseProtoDataset):
     def __init__(self, data_file, args):
         super(BaseDataset, self).__init__(data_file, args)
         self.root_dataset = args.root_dataset
-        self.random_flip = args.random_flip
         # down sampling rate of feature map
         self.down_sampling_rate = args.down_sampling_rate
         self.batch_per_gpu = args.batch_size_per_gpu
@@ -115,14 +114,14 @@ class BaseDataset(BaseProtoDataset):
             anchor_num = min(len(anchors), self.max_anchor_per_img)
             batch_anchor_num[i] = anchor_num
             for j in range(anchor_num):
-                label = int(anchors[j]['cls_label'])
+                label = int(anchors[j]['label'])
                 batch_labels[i, j] = label
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
 
         output = dict()
         output['img_data'] = batch_images
         output['scales'] = torch.tensor(batch_scales)
-        output['cls_label'] = torch.tensor(batch_labels)
+        output['label'] = torch.tensor(batch_labels)
         output['anchors'] = torch.tensor(batch_anchors)
         output['anchor_num'] = torch.tensor(batch_anchor_num)
 
