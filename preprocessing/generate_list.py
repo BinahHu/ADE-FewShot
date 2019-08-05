@@ -52,7 +52,7 @@ def base_generation(args):
 
     random.seed(73)
     for category in range(len(base_list)):
-        if all_list[category] == []:
+        if all_list[category] is []:
             continue
         random.shuffle(all_list[category])
 
@@ -63,11 +63,11 @@ def base_generation(args):
             continue
         for j in range(0, math.ceil(5 * length / 6)):
             img_index = all_list[i][j]['img']
-            sample_list_train[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
+            sample_list_train[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
         for j in range(math.ceil(5 * length / 6), length):
             img_index = all_list[i][j]['img']
-            sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
+            sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'base_img_train.json')
@@ -156,17 +156,15 @@ def novel_generation(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-root_dataset',default='../data/ADE')
+    parser.add_argument('-root_dataset', default='../data/ADE')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
-    parser.add_argument('-dest', default='list')
-    parser.add_argument('-part', default='base')
-    parser.add_argument('-output', default='ADE_Base/')
+    parser.add_argument('-part', default='Base')
     parser.add_argument('-shot', default=5)
     parser.add_argument('-img_size', default='img_path2size.json')
-    parser.add_argument('-cap', type=int, default=0)
 
     args = parser.parse_args()
-    if args.part == 'base':
+    setattr(args, 'output', 'ADE_' + args.part)
+    if args.part == 'Base':
         base_generation(args)
-    elif args.part == 'novel':
+    elif args.part == 'Novel':
         novel_generation(args)
