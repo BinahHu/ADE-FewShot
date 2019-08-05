@@ -126,7 +126,7 @@ def novel_generation(args):
 
     random.seed(73)
     for category in range(len(novel_list)):
-        if all_list[category] == []:
+        if all_list[category] is []:
             continue
         random.shuffle(all_list[category])
 

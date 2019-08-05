@@ -119,30 +119,27 @@ def random_split(dataset, lengths):
     return [Subset(dataset, indices[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
 
-class BaseBaseDataset(Dataset):
-    def __init__(self, odgt, opt, **kwargs):
+class BaseProtoDataset(Dataset):
+    def __init__(self, data_file, args):
         # parse options
-        self.imgSize = opt.imgSize
-        self.imgMaxSize = opt.imgMaxSize
-
-        self.loss = opt.loss
-        self.attr_path = opt.attr_path
-        self.attr_dic = None
-        self.attr_num = opt.num_attr
+        self.imgShortSize = args.imgShortSize
+        self.imgMaxSize = args.imgMaxSize
+        self.list_sample = None
+        self.num_sample = 0
+        self.args = args
 
         # max down sampling rate of network to avoid rounding during conv or pooling
-        self.padding_constant = opt.padding_constant
+        self.padding_constant = args.padding_constant
         # parse the input list
-        self.parse_input_list(odgt, **kwargs)
-        self.mode = None
+        self.parse_input_list(data_file)
 
         # mean and std
         self.normalize = transforms.Normalize(
             mean=[102.9801, 115.9465, 122.7717],
             std=[1., 1., 1.])
 
-    def parse_input_list(self, odgt, max_sample=-1, start_idx=-1, end_idx=-1):
-        f = open(odgt, 'r')
+    def parse_input_list(self, data_file):
+        f = open(data_file, 'r')
         old_list_sample = json.load(f)
         f.close()
 
@@ -151,69 +148,19 @@ class BaseBaseDataset(Dataset):
         for sample in iterator:
             self.list_sample.append(sample)
 
-        if max_sample > 0:
-            self.list_sample = self.list_sample[0:max_sample]
-        if start_idx >= 0 and end_idx >= 0:     # divide file list
-            self.list_sample = self.list_sample[start_idx:end_idx]
-
         self.num_sample = len(self.list_sample)
-        assert self.num_sample > 0
         print('# samples: {}'.format(self.num_sample))
-
-        if self.loss == 'attr':
-            f = open(self.attr_path, 'r')
-            attr_dic = json.load(f)
-            self.attr_dic = attr_dic
-
-    def random_crop(self, img, size=(224, 224), box=None):
-        if box is not None:
-            box = np.array(box).astype(np.int)
-            # if the length of the box is larger than the size we want
-            box_height = box[1, 1] - box[0, 1]
-            box_width = box[1, 0] - box[0, 0]
-            x_lower = max(0, min(box[0, 0], box[1, 0] - size[1]))
-            x_upper = min(img.shape[1] - size[1], max(box[0, 0] + size[1], box[1, 0]) - size[1])
-            y_lower = max(0, min(box[0, 1], box[1, 1] - size[0]))
-            y_upper = min(img.shape[0] - size[0], max(box[0, 1] + size[0], box[1, 1]) - size[0])
-            if box_height >= size[0] and box_width >= size[1]:
-                y = random.randint(box[0, 1], box[1, 1] - size[0])
-                x = random.randint(box[0, 0], box[1, 0] - size[1])
-            elif box_height >= size[0]:
-                y = random.randint(box[0, 1], box[1, 1] - size[0])
-                x = random.randint(x_lower, x_upper)
-            elif box_width >= size[1]:
-                y = random.randint(y_lower, y_upper)
-                x = random.randint(box[0, 0], box[1, 0] - size[1])
-            else:
-                y = random.randint(y_lower, y_upper)
-                x = random.randint(x_lower, x_upper)
-
-            result = img[y:y + size[0], x:x + size[1]]
-            return [result, y, x]
-        else:
-            h, w, _ = img.shape
-            # print("{} {}".format(h, w))
-            y = random.randint(0, h - size[0])
-            x = random.randint(0, w - size[1])
-            result = img[y:y + size[0], x:x + size[1], :]
-
-            return [result, y, x]
-
-        return [result, y, x]
 
     def img_transform(self, img):
         # image to float
         img = img.astype(np.float32)
-        if self.mode == 'train':
-            random_flip = np.random.choice([0, 1])
-            if random_flip == 1:
-                img = cv2.flip(img, 1)
         img = img.transpose((2, 0, 1))
         img = self.normalize(torch.from_numpy(img.copy()))
         return img
 
     # Round x to the nearest multiple of p and x' >= x
-    def round2nearest_multiple(self, x, p):
+    @staticmethod
+    def round2nearest_multiple(x, p):
         return ((x - 1) // p + 1) * p
 
     def __getitem__(self, index):
@@ -226,32 +173,27 @@ class BaseBaseDataset(Dataset):
         return NotImplementedError
 
 
-class BaseNovelDataset(Dataset):
-    def __init__(self, h5path, opt, **kwargs):
-        self.feat_dim = opt.feat_dim
+class NovelProtoDataset(Dataset):
+    def __init__(self, h5path, args):
+        self.feat_dim = args.feat_dim * args.crop_height * args.crop_width
         self.data_path = h5path
         self.features = None
         self.labels = None
         self.num_sample = 0
         self.data = None
+        self.args = args
         self._get_feat_data()
 
     def _get_feat_data(self):
         f = h5py.File(self.data_path, 'r')
         self.features = np.array(f['feature_map'])
         self.labels = np.array(f['labels'])
-        if 'anchors' in f.keys():
-            self.anchors = np.array(f['anchors'])
-        if 'scales' in f.keys():
-            self.scales = np.array(f['scales'])
         self.num_sample = self.labels.size
 
         self.data = [dict() for i in range(self.num_sample)]
         for i in range(self.num_sample):
             self.data[i] = {'feature': self.features[i],
                             'label': self.labels[i]}
-                            # 'anchors': self.anchors[i],
-                            # 'scales': self.scales[i]}
 
     def __getitem__(self, index):
         return NotImplementedError

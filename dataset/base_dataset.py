@@ -1,7 +1,7 @@
 import os
 import json
 import torch
-from dataset.dataset_base import BaseBaseDataset
+from dataset.proto_dataset import BaseProtoDataset
 import cv2
 import torchvision
 from torchvision import transforms
@@ -11,29 +11,27 @@ import math
 import random
 
 
-class ImgBaseDataset(BaseBaseDataset):
+class BaseDataset(BaseProtoDataset):
     """
     Form batch at object level
     """
-    def __init__(self, odgt, opt, batch_per_gpu=1, **kwargs):
-        super(ImgBaseDataset, self).__init__(odgt, opt, **kwargs)
-        self.root_dataset = opt.root_dataset
-        self.random_flip = opt.random_flip
-        # down sampling rate of segm labe
-        self.segm_downsampling_rate = opt.segm_downsampling_rate
-        self.batch_per_gpu = batch_per_gpu
+    def __init__(self, data_file, args):
+        super(BaseDataset, self).__init__(data_file, args)
+        self.root_dataset = args.root_dataset
+        self.random_flip = args.random_flip
+        # down sampling rate of feature map
+        self.down_sampling_rate = args.down_sampling_rate
+        self.batch_per_gpu = args.batch_size_per_gpu
         self.batch_record_list = [[], []]
 
-        # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
-        self.max_anchor_per_img = opt.max_anchor_per_img
+        self.max_anchor_per_img = args.max_anchor_per_img
 
     def _get_sub_batch(self):
         while True:
             # get a sample record
             this_sample = self.list_sample[self.cur_idx]
-            # print(len(this_sample['anchors']))
             if len(this_sample['anchors']) == 0:
                 self.cur_idx += 1
                 if self.cur_idx >= self.num_sample:
@@ -70,38 +68,36 @@ class ImgBaseDataset(BaseBaseDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        this_short_size = 800
+        this_short_size = self.imgShortSize
 
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
-        batch_resized_size = np.zeros((self.batch_per_gpu, 2), np.int32)
+        batch_resize_size = np.zeros((self.batch_per_gpu, 2), np.int32)
         batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
         batch_anchor_num = np.zeros(self.batch_per_gpu)
         batch_labels = np.zeros((self.batch_per_gpu, self.max_anchor_per_img))
         batch_anchors = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, 4))
-        if self.loss == 'attr':
-            batch_attr = np.zeros((self.batch_per_gpu, self.max_anchor_per_img, self.attr_num))
+
         for i in range(self.batch_per_gpu):
             img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
             this_scale = min(
-                this_short_size / min(img_height, img_width), \
-                self.imgMaxSize / max(img_height, img_width))
-            img_resized_height, img_resized_width = img_height * this_scale, img_width * this_scale
-            batch_resized_size[i, :] = img_resized_height, img_resized_width
-        batch_resized_height = np.max(batch_resized_size[:, 0])
-        batch_resized_width = np.max(batch_resized_size[:, 1])
+                this_short_size / min(img_height, img_width), self.imgMaxSize / max(img_height, img_width))
+            img_resize_height, img_resize_width = img_height * this_scale, img_width * this_scale
+            batch_resize_size[i, :] = img_resize_height, img_resize_width
+        batch_resize_height = np.max(batch_resize_size[:, 0])
+        batch_resize_width = np.max(batch_resize_size[:, 1])
 
         # Here we must pad both input image and segmentation map to size h' and w' so that p | h' and p | w'
-        batch_resized_height = int(self.round2nearest_multiple(batch_resized_height, self.padding_constant))
-        batch_resized_width = int(self.round2nearest_multiple(batch_resized_width, self.padding_constant))
+        batch_resize_height = int(self.round2nearest_multiple(batch_resize_height, self.padding_constant))
+        batch_resize_width = int(self.round2nearest_multiple(batch_resize_width, self.padding_constant))
 
         for i in range(self.batch_per_gpu):
-            batch_scales[i, 0] = batch_resized_height / batch_records[i]['height']
-            batch_scales[i, 1] = batch_resized_width / batch_records[i]['width']
+            batch_scales[i, 0] = batch_resize_height / batch_records[i]['height']
+            batch_scales[i, 1] = batch_resize_width / batch_records[i]['width']
 
-        assert self.padding_constant >= self.segm_downsampling_rate, \
+        assert self.padding_constant >= self.down_sampling_rate, \
             'padding constant must be equal or large than segm downsamping rate'
-        batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resized_height, batch_resized_width)
+        batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resize_height, batch_resize_width)
 
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
@@ -111,7 +107,7 @@ class ImgBaseDataset(BaseBaseDataset):
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)
             assert (img.ndim == 3)
             # note that each sample within a mini batch has different scale param
-            img = cv2.resize(img, (batch_resized_width, batch_resized_height), interpolation=cv2.INTER_CUBIC)
+            img = cv2.resize(img, (batch_resize_width, batch_resize_height), interpolation=cv2.INTER_CUBIC)
             # image transform
             img = self.img_transform(img)
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
@@ -122,10 +118,6 @@ class ImgBaseDataset(BaseBaseDataset):
                 label = int(anchors[j]['cls_label'])
                 batch_labels[i, j] = label
                 batch_anchors[i, j, :] = np.array(anchors[j]['anchor'])
-                if self.loss == 'attr':
-                    attrs = self.attr_dic[label]
-                    for location in attrs:
-                        batch_attr[i, j, location] = 1
 
         output = dict()
         output['img_data'] = batch_images
@@ -133,11 +125,9 @@ class ImgBaseDataset(BaseBaseDataset):
         output['cls_label'] = torch.tensor(batch_labels)
         output['anchors'] = torch.tensor(batch_anchors)
         output['anchor_num'] = torch.tensor(batch_anchor_num)
-        if self.loss == 'attr':
-            output['attr'] = torch.tensor(batch_attr)
 
         return output
 
     def __len__(self):
-        return int(1e10) # It's a fake length due to the trick that every loader maintains its own list
-        #return self.num_sampleclass
+        # It's a fake length due to the trick that every loader maintains its own list
+        return int(1e10)
