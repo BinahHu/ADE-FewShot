@@ -12,6 +12,7 @@ import torch.nn as nn
 import numpy as np
 
 from dataset.base_dataset import BaseDataset
+from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoaderIter, DataLoader
 from utils import AverageMeter, selective_load_weights
@@ -19,6 +20,7 @@ from utils import AverageMeter, selective_load_weights
 from model.builder import ModelBuilder
 from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
+from model.novel_model import NovelClassifier
 
 
 def base(args):
@@ -50,6 +52,55 @@ def base(args):
     iterations = 0
     while iterations <= args.train_epoch_iters:
         batch_data = next(iter_base)
+        if iterations % 10 == 0:
+            print('{} / {}'.format(iterations, args.train_epoch_iters))
+        if iterations == 0:
+            preds, labels = network(batch_data)
+            preds = np.array(preds.detach().cpu())
+            labels = np.array(labels.cpu())
+        else:
+            pred, label = network(batch_data)
+            pred = np.array(pred.detach().cpu())
+            label = np.array(label.cpu())
+
+            preds = np.vstack((preds, pred))
+            labels = np.hstack((labels, label))
+        iterations += 1
+
+    f = h5py.File(args.output, 'w')
+    f.create_dataset('preds', data=preds)
+    f.create_dataset('labels', data=labels)
+    f.close()
+
+
+def novel(args):
+    network = NovelClassifier(args)
+    selective_load_weights(network, args.model_weight)
+    dataset_novel = NovelDataset(
+        args.list_novel, args, batch_per_gpu=args.batch_size_per_gpu)
+    loader_novel = DataLoader(
+        dataset_novel, batch_size=len(args.gpus), shuffle=False,
+        collate_fn=user_scattered_collate,
+        num_workers=int(args.workers),
+        drop_last=True,
+        pin_memory=True
+    )
+    args.novel_epoch_iters = \
+        math.ceil(dataset_novel.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
+    print('1 Novel Epoch = {} iters'.format(args.novel_epoch_iters))
+    iter_novel = iter(loader_novel)
+
+    network = UserScatteredDataParallel(network, device_ids=args.gpus)
+    patch_replication_callback(network)
+    network.cuda()
+    network.eval()
+    network.module.mode = 'diagnosis'
+
+    preds = None
+    labels = None
+    iterations = 0
+    while iterations <= args.train_epoch_iters:
+        batch_data = next(iter_novel)
         if iterations % 10 == 0:
             print('{} / {}'.format(iterations, args.train_epoch_iters))
         if iterations == 0:

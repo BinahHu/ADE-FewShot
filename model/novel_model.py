@@ -9,9 +9,11 @@ class NovelClassifier(nn.Module):
         self.in_dim = args.crop_height * args.crop_width * args.feat_dim
         self.num_class = args.num_novel_class
         self.fc = nn.Linear(self.in_dim, self.num_class)
-        self.range_of_compute = args.range_of_compute
         self.loss = nn.CrossEntropyLoss(ignore_index=-1)
         self.mode = 'train'
+
+        if hasattr(args, 'range_of_compute'):
+            self.range_of_compute = args.range_of_compute
 
     def predict(self, x):
         feature = x['feature']

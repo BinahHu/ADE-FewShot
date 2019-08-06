@@ -18,6 +18,8 @@ from model.builder import ModelBuilder
 from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
 
+from utils import selective_load_weights
+
 from logger import Logger
 
 
@@ -149,9 +151,10 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
+        times = args.drop_point.index(epoch)
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / 10
+                param_group['lr'] = param_group['lr'] / pow(10, times)
     return None
 
 
@@ -210,6 +213,8 @@ def main(args):
             lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
 
     network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
+    if args.model_weight != '':
+        selective_load_weights(network, args.model_weight)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -230,15 +235,24 @@ def main(args):
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
-                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+                                    lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
     # supervision optimizers
     for i, supervision in enumerate(args.supervision):
         optimizers.append(torch.optim.SGD(
             getattr(network.module, supervision['name']).parameters(),
             lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
+
+    if args.start_epoch != 0:
+        times = 0
+        for i in args.drop_point:
+            if args.start_epoch > i:
+                times += 1
+        for optimizer in optimizers:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = param_group['lr'] / pow(10, times)
 
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
@@ -306,4 +320,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.supervision = json.load(open(args.supervision, 'r'))
     print(args.supervision)
+    if args.log != '':
+        args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
     main(args)
