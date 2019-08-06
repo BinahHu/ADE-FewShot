@@ -27,6 +27,8 @@ class BaseDataset(BaseProtoDataset):
         self.if_shuffled = False
         self.max_anchor_per_img = args.max_anchor_per_img
 
+        self.mode = 'train'
+
     def _get_sub_batch(self):
         while True:
             # get a sample record
@@ -125,7 +127,8 @@ class BaseDataset(BaseProtoDataset):
         output['anchors'] = torch.tensor(batch_anchors)
         output['anchor_num'] = torch.tensor(batch_anchor_num)
 
-        return output
+        if self.mode == 'val':
+            return output
 
     def __len__(self):
         # It's a fake length due to the trick that every loader maintains its own list
