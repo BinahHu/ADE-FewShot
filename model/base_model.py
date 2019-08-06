@@ -25,6 +25,13 @@ class BaseLearningModule(nn.Module):
         self.roi_align = RoIAlign(args.crop_height, args.crop_width, transform_fpcoor=True)
         self.down_sampling_rate = args.down_sampling_rate
 
+        # supervision modules are generated in train
+        # args.module example:
+        # [{'name': 'seg', 'module': seg_module}]
+        if hasattr(args, 'module'):
+            for module in args.module:
+                setattr(self, module['name'], module['module'])
+
         self.mode = 'train'
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
@@ -87,4 +94,24 @@ class BaseLearningModule(nn.Module):
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
             acc += acc_cls * labels.shape[0]
+
+            # do not contain other supervision
+            if not hasattr(self.args, 'module'):
+                continue
+
+            # form generic data input for all supervision branch
+            input_agg = dict()
+            input_agg['features'] = feature
+            input_agg['feature_map'] = feature_map[i]
+            for key in feed_dict.keys():
+                if key not in ['img_data']:
+                    supervision = next((x for x in self.args.supervision if x['name'] == key), None)
+                    if (supervision is not None) and (supervision['type'] == 'inst'):
+                        input_agg[key] = feed_dict[key][i]
+
+            # process through each branch
+            for supervision in self.args.supervision:
+                loss_branch = getattr(self, supervision['name'])(input_agg)
+                loss += (loss_branch * supervision['weight'])
+
         return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
