@@ -35,6 +35,7 @@ class ObjBaseDataset(BaseBaseDataset):
         # override dataset length when trainig with batch_per_gpu > 1
         self.cur_idx = 0
         self.if_shuffled = False
+        self.attr_num = opt.num_attr
 
     def construct_cat_list(self, args):
         def weight_function(x, args):
@@ -112,6 +113,7 @@ class ObjBaseDataset(BaseBaseDataset):
             batch_resized_size[i, :] = img_resized_height, img_resized_width
 
         batch_images = torch.zeros(self.batch_per_gpu, 3, 224, 224)
+        batch_attrs = torch.zeros(self.batch_per_gpu, self.attr_num).int()
         if self.loss == 'Multi':
             batch_labels = -1 * torch.ones(self.batch_per_gpu, self.num_class).int()
         else:
@@ -119,6 +121,9 @@ class ObjBaseDataset(BaseBaseDataset):
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
             anchor = this_record['anchor']
+            attr_record = this_record['attr']
+            for attr in attr_record:
+                batch_attrs[i][attr] = attr + 1
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
@@ -142,6 +147,7 @@ class ObjBaseDataset(BaseBaseDataset):
         output = dict()
         output['img_data'] = batch_images
         output['cls_label'] = batch_labels
+        output['attr'] = batch_attrs
         return output
 
     def __len__(self):

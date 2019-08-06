@@ -58,6 +58,7 @@ def base_list(args):
     img_path_path = os.path.join(origin_dataset, 'img_path.json')
     data_img_path = os.path.join(origin_dataset, 'data_img.json')
     mask_path = os.path.join(origin_dataset, 'mask.json')
+    attr_path = os.path.join(origin_dataset, 'attr.json')
 
     f = open(base_set_path, 'r')
     base_set = json.load(f)
@@ -74,11 +75,14 @@ def base_list(args):
     f = open(mask_path, 'r')
     mask = json.load(f)
     f.close()
+    f = open(attr_path, 'r')
+    attr_table = json.load(f)
+    f.close()
     args.maskset = mask
-    base_obj_list(args, base_set, base_list, img_path)
+    base_obj_list(args, base_set, base_list, img_path, attr_table)
 
 
-def base_obj_list(args, base_set, base_list, img_path):
+def base_obj_list(args, base_set, base_list, img_path, attr_table):
     """
     Generate object level base training dataset odgt
     """
@@ -121,7 +125,9 @@ def base_obj_list(args, base_set, base_list, img_path):
         for j in range(0, train_num):
             result_train += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
+            attr = attr_table[i]
             result_train += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_train += ('\"' + 'attr' + '\": ' + str(attr) + ', ')
             result_train += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
 
     for i in range(len(base_list)):
@@ -131,7 +137,9 @@ def base_obj_list(args, base_set, base_list, img_path):
         for j in range(math.ceil(5 * length / 6), length):
             result_val += ('{' + '\"fpath_img\": ' + '\"' + all_list[i][j]["path"] + '\"' + ', ')
             box = all_list[i][j]["box"]
+            attr = attr_table[i]
             result_val += ('\"' + 'anchor' + '\": ' + str([[box[0], box[2]], [box[1], box[3]]]) + ', ')
+            result_val += ('\"' + 'attr' + '\": ' + str(attr) + ', ')
             result_val += ('\"' + 'cls_label' + '\": ' + str(i) + '}' + '\n')
 
     suffix = ""
@@ -234,6 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('-part', default='base')
     parser.add_argument('-output', default='ADE_Base/')
     parser.add_argument('-shot', default=5)
+    parser.add_argument('-num_attr', default=159)
     parser.add_argument('-img_size', default='img_path2size.json')
     parser.add_argument('--cap', type=int, default=0)
     parser.add_argument('-mask', type=bool, default=False)

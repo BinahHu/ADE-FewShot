@@ -9,9 +9,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.functional import cosine_similarity
-import json
+import numpy as np
 
-attr_table = json.load(open("/home/zhu2/ADE-FewShot/data/ADE/ADE_Origin/attr.json"))
 
 
 class GenericLoss(nn.Module):
@@ -26,41 +25,28 @@ class GenericLoss(nn.Module):
             self.attr_loss = HardConstrain(num_attr + 1, feat_dim)
         """
         self.is_soft = is_soft
-        if is_soft:
-            num_attr += 1
-        self.embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
         self.cross_entropy_loss = nn.CrossEntropyLoss()
 
         self.num_attr = num_attr
+        self.loss = nn.MultiLabelSoftMarginLoss()
 
-    def forward(self, feats, embed):
+    def forward(self, feats=None, embed=None, attributes=None, scores=None):
+        if self.is_soft:
+            labels = attributes.float().cuda()
+            attr_loss = 0.0
+            for i in range(len(labels)):
+                nz = labels[i].nonzero()
+                labels[i][nz] = 1.0
 
-        orth_loss = None
-        attr_loss = None
+                loss_mask = torch.ones(attributes.size(1)).cuda()
+                zeros = (labels[i, :] == 0).nonzero().cpu().numpy()
+                indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.8)), False)
+                loss_mask[indices] = 0
 
-        attr_loss = 1 - cosine_similarity(embed, feats, 1)
-        attr_loss = attr_loss.mean()
-
-        """
-        if attributes.size(1) > 1:
-            '''
-            orth_loss = Variable(torch.zeros(1), requires_grad=True).cuda()
-            for name, param in self.attr_loss.embedder.named_parameters():
-                if 'bias' not in name:
-                    param_flat = param.view(param.shape[0], -1)
-                    sym = torch.mm(param_flat, torch.t(param_flat)).cuda()
-                    sym -= Variable(torch.eye(param_flat.shape[0])).cuda()
-                    orth_loss = orth_loss + sym.sum()
-
-            orth_loss = orth_loss[0].abs()
-            '''
-            attr_loss = 0
-            '''
-            for i in range(len(feats)):
-                attr_l, _ = self.attr_loss(attributes[i].cuda(), feats[i])
-                attr_loss += attr_l
-            '''
-            attr_l, _ = self.attr_loss(attributes, feats)
-            attr_loss += attr_l
-        """
-        return attr_loss, orth_loss
+                loss_fn = nn.MultiLabelSoftMarginLoss(weight=loss_mask)
+                attr_loss += loss_fn(labels[i].unsqueeze(0), scores[i].unsqueeze(0))
+            attr_loss /= labels.size(0)
+        else:
+            attr_loss = 1 - cosine_similarity(embed, feats, 1)
+            attr_loss = attr_loss.mean()
+        return attr_loss

@@ -146,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--weight_init', default='')
     parser.add_argument('--loss', default='CE')
-    parser.add_argument('--num_attr', default=386, type=int)
+    parser.add_argument('--num_attr', default=160, type=int)
     parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
 
     # Data related arguments

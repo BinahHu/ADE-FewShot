@@ -11,6 +11,8 @@ model/prtrain/
 run.sh
 val.sh
 feature.sh
+sleep.sh
+test.sh
 diagnosis/*.json
 diagnosis/*.pth
 model/roi_align/

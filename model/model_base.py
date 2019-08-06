@@ -7,7 +7,7 @@ import math
 import numpy as np
 import json
 
-attr_table = json.load(open("/home/zhu2/ADE-FewShot/data/ADE/ADE_Origin/attr.json"))
+
 
 class ModelBuilder():
     # weight initialization
@@ -50,9 +50,9 @@ class ModelBuilder():
         feat_dim = args.feat_dim
         num_attr = args.num_attr
         if args.is_soft:
-            embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
+            embedder = nn.Linear(feat_dim, num_attr, bias=False)
         else:
-            embedder = nn.Embedding(num_attr+1, feat_dim, padding_idx=0)
+            embedder = nn.Embedding(num_attr, feat_dim, padding_idx=0)
         return embedder
 
 
@@ -97,9 +97,11 @@ class LearningModule(LearningModuleBase):
         self.crit = crit
         self.output = output
         self.losstype = args.loss
-        self.embd = embed
+        self.embed = embed
         self.attr_array = []
         self.num_attr = args.num_attr
+        self.is_soft = args.is_soft
+        self.sigmoid = nn.Sigmoid()
         #for i in args.gpus:
         #    self.attr_array.append(torch.zeros(args.batch_size_per_gpu, args.num_attr).long().cuda(i))
 
@@ -114,34 +116,24 @@ class LearningModule(LearningModuleBase):
                 continue
 
             #Load Label
-            if crit['type'] != 'attr':
-                label = feed_dict['{type}_label'.format(type=crit['type'])].long()
-            else:
-                label = feed_dict['cls_label'].long()
+            label = feed_dict['cls_label'].long()
 
 
 
             #cls layer, get pred
-            if crit['type'] == 'cls':
-                pred = self.cls(feature_map)
-            elif crit['type'] == 'attr':
-                pred = self.cls(feature_map)
-
-
+            pred = self.cls(feature_map)
 
             #loss
             if crit['type'] == 'attr' and self.losstype == 'Attr':
-                #attributes = self.attr_array[torch.cuda.current_device()]
-                #attributes.zero_()
-                attributes = torch.zeros(label.size(0), self.num_attr).long().cuda()
-                for i in range(label.size(0)):
-                    cat_id = label[i].item()
-                    attrs = attr_table[cat_id]
-                    for attr in attrs:
-                        attributes[i][attr] = 1.0
-                embedvec = self.embd(attributes)
-                embedvec = embedvec.sum(1).squeeze()
-                attr_loss, orth_loss = crit['crit'](feature_map, embedvec)
+                attributes = feed_dict['attr'].long()
+                if self.is_soft:
+                    scores = self.embed(feature_map)
+                    scores = self.sigmoid(scores)
+                    attr_loss = crit['crit'](attributes=attributes, scores=scores)
+                else:
+                    embedvec = self.embed(attributes)
+                    embedvec = embedvec.sum(1)
+                    attr_loss = crit['crit'](feats=feature_map, embed=embedvec)
                 loss += crit['weight'] * attr_loss
             else:
                 loss_cls = crit['weight'] * crit['crit'](pred, label)
