@@ -19,9 +19,17 @@ class NovelClassifier(nn.Module):
         pred = self.fc(feature)
         return self.acc(pred, label)
 
+    def diagnosis(self, x):
+        feature = x['feature']
+        label = x['label'].long()
+        pred = self.fc(feature)
+        return pred, label
+
     def forward(self, x):
         if self.mode == 'val':
             return self.predict(x)
+        elif self.mode == 'diagnosis':
+            return self.diagnosis(x)
 
         feature = x['feature']
         label = x['label'].long()

@@ -33,6 +33,7 @@ class BaseLearningModule(nn.Module):
                 setattr(self, module['name'], module['module'])
 
         self.mode = 'train'
+        self.classifier.mode = self.mode
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
         """
@@ -81,9 +82,38 @@ class BaseLearningModule(nn.Module):
                 labels = torch.stack((labels, label), dim=0)
         return features, labels
 
+    def diagnosis(self, feed_dict):
+        """
+        used only when computing
+        :param feed_dict:
+        :return: prediction and labels
+        """
+        feature_map = self.backbone(feed_dict['img_data'])
+        batch_img_num = feature_map.shape[0]
+        predictions = None
+        labels = None
+        for i in range(batch_img_num):
+            anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+            if anchor_num == 0 or anchor_num >= 100:
+                continue
+            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
+                                                feed_dict['anchors'][i], anchor_num)
+            label = feed_dict['label'][i][:anchor_num].long()
+            prediction = self.classifier([feature, label])
+
+            if predictions is None:
+                predictions = prediction.clone()
+                labels = label.clone()
+            else:
+                predictions = torch.stack((predictions, prediction), dim=0)
+                labels = torch.stack((labels, label), dim=0)
+        return predictions, labels
+
     def forward(self, feed_dict):
         if self.mode == 'feature':
             return self.predict(feed_dict)
+        elif self.mode == 'diagnosis':
+            return self.diagnosis(feed_dict)
 
         feature_map = self.backbone(feed_dict['img_data'])
         acc = 0
@@ -106,6 +136,8 @@ class BaseLearningModule(nn.Module):
             # do not contain other supervision
             if not hasattr(self.args, 'module'):
                 continue
+            if self.mode == 'val':
+                continue
 
             # form generic data input for all supervision branch
             input_agg = dict()
@@ -119,7 +151,7 @@ class BaseLearningModule(nn.Module):
 
             # process through each branch
             for supervision in self.args.supervision:
-                loss_branch = getattr(self, supervision['name'])(input_agg)
+                loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 loss += (loss_branch * supervision['weight'])
 
         return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum

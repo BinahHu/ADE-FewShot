@@ -1,1 +1,1 @@
-[{"name":  "attr", "type": "inst", "contents": "list", "weight":  1.0, "lr":  1e-1, "other":  {"num_attr":  159}}]
+[{"name":  "attr", "type": "inst", "contents": "list", "weight":  10.0, "lr":  1e-1, "other":  {"num_attr":  159}}]

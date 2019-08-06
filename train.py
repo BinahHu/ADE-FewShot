@@ -49,11 +49,8 @@ def train(module, iterator, optimizers, epoch, args):
 
         # Backward
         loss.backward()
-        optimizer_feat, optimizer_cls, optimizer_dict = optimizers
-        optimizer_feat.step()
-        optimizer_cls.step()
-        for supervision in args.supervision:
-            optimizer_dict[supervision['name']].step()
+        for optimizer in optimizers:
+            optimizer.step()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -142,11 +139,7 @@ def checkpoint(nets, args, epoch_num):
 
 
 def warm_up_adjust_lr(optimizers, epoch, iteration, args):
-    optimizer_feat, optimizer_cls, optimizer_dict = optimizers
-    optimizer_list = [optimizer_feat, optimizer_cls]
-    for optimize_item in optimizer_dict.items():
-        optimizer_list.append(optimize_item[1])
-    for optimizer in optimizer_list:
+    for optimizer in optimizers:
         lr = args.lr_feat * args.warm_up_factor
         lr = lr + (args.lr_feat - lr) * \
              (epoch * args.train_epoch_iters + iteration) / args.warm_up_iters
@@ -156,11 +149,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
-        optimizer_feat, optimizer_cls, optimizer_dict = optimizers
-        optimizer_list = [optimizer_feat, optimizer_cls]
-        for optimize_item in optimizer_dict.items():
-            optimizer_list.append(optimize_item[1])
-        for optimizer in optimizer_list:
+        for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
     return None
@@ -213,13 +202,12 @@ def main(args):
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls]
     # supervision optimizers
-    optimizer_dict = dict()
     for i, supervision in enumerate(args.supervision):
-        optimizer_dict[supervision['name']] = torch.optim.SGD(
+        optimizers.append(torch.optim.SGD(
             supervision_modules[i]['module'].parameters(),
-            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls, optimizer_dict]
+            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
 
     network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
@@ -242,15 +230,16 @@ def main(args):
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
+                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
-                                    lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_dict = dict()
-    for supervision in args.supervision:
-        optimizer_dict[supervision['name']] = torch.optim.SGD(
-            getattr(network, supervision['name']).pamameters(),
-            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls, optimizer_dict]
+                                    lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls]
+    # supervision optimizers
+    for i, supervision in enumerate(args.supervision):
+        optimizers.append(torch.optim.SGD(
+            getattr(network.module, supervision['name']).parameters(),
+            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
+
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         validate(network, iterator_val, epoch, args)
