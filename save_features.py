@@ -145,7 +145,6 @@ if __name__ == '__main__':
     parser.add_argument('--sample_type', default='inst',
                         help='instance level or category level sampling')
 
-
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
     parser.add_argument('--ckpt', default='./checkpoint',

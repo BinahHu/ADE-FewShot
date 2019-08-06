@@ -8,24 +8,22 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-from dataset.novel_dataset import ObjNovelDataset
+from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
-from utils import AverageMeter, parse_devices
+from utils import AverageMeter
 from model.parallel.replicate import patch_replication_callback
-from model.model_base import ModelBuilder, NovelTuningModule
-
-from logger import Logger
+from model.novel_model import NovelClassifier
 
 
-def train(module, iterator, optimizers, history, epoch, args):
+def train(module, iterator, optimizers, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_total_loss = AverageMeter()
     ave_acc = AverageMeter()
 
     module.train()
-
+    module.module.mode = 'train'
     # main loop
     tic = time.time()
     acc_iter = 0
@@ -62,25 +60,17 @@ def train(module, iterator, optimizers, history, epoch, args):
                           batch_time.average(), data_time.average(),
                           args.lr_cls,
                           ave_acc.average(), ave_total_loss.average(), acc_iter / acc_iter_num))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_iter / acc_iter_num}
             acc_iter = 0
             acc_iter_num = 0
-            dispepoch = epoch
-            for tag, value in info.items():
-                args.logger.scalar_summary(tag, value, i + dispepoch * args.train_epoch_iters)
-
-            fractional_epoch = epoch - 1 + 1. * i / args.train_epoch_iters
-            history['train']['epoch'].append(fractional_epoch)
-            history['train']['loss'].append(loss.data.item())
-            history['train']['acc'].append(acc.data.item())
 
 
-def validate(module, iterator, history, epoch, args):
+def validate(module, iterator, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_acc = AverageMeter()
 
     module.eval()
+    module.module.mode = 'val'
     # main loop
     tic = time.time()
     acc_iter = 0
@@ -89,7 +79,7 @@ def validate(module, iterator, history, epoch, args):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        _, acc = module(batch_data)
+        acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
         acc_iter_num += 1
@@ -106,42 +96,23 @@ def validate(module, iterator, history, epoch, args):
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), acc_iter / acc_iter_num))
-                  
-            info = {'acc-val':ave_acc.average(), 'acc-iter-val':acc_iter / acc_iter_num}
+
             acc_iter = 0
             acc_iter_num = 0
-            dispepoch = epoch
-            for tag, value in info.items():
-                args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
-
-            fractional_epoch = epoch - 1 + 1. * i / args.val_epoch_iters
-            history['val']['epoch'].append(fractional_epoch)
-            history['val']['acc'].append(acc.data.item())
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
     return ave_acc.average()
 
 
-def checkpoint(nets, history, args, epoch_num):
+def checkpoint(nets, args, epoch_num):
     print('Saving checkpoints...')
     suffix_latest = 'epoch_{}.pth'.format(epoch_num)
 
-    torch.save(history,
-               '{}/history_{}'.format(args.ckpt, suffix_latest))
-    torch.save(nets.state_dict(),
+    torch.save(nets.module.state_dict(),
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
 def main(args):
-    # Network Builders
-    builder = ModelBuilder()
-    classifier = builder.build_classification_layer(args)
-
-    crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
-    crit_seg = nn.NLLLoss(ignore_index=-1)
-    crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
-            {'type': 'seg', 'crit': crit_seg, 'weight': 0}]
-
-    dataset_train = ObjNovelDataset(
+    dataset_train = NovelDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
@@ -150,7 +121,7 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
-    dataset_val = ObjNovelDataset(
+    dataset_val = NovelDataset(
         args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
@@ -169,15 +140,12 @@ def main(args):
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
-    
-    args.logger = Logger(os.path.join(args.log_dir, args.comment))
 
+    classifier = NovelClassifier(args)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
     optimizers = [optimizer_cls]
-    history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
-    network = NovelTuningModule(crit, classifier)
-    network = UserScatteredDataParallel(network, device_ids=args.gpus)
+    network = UserScatteredDataParallel(classifier, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
 
@@ -187,9 +155,9 @@ def main(args):
 
     accuracy = []
     for epoch in range(args.start_epoch, args.num_epoch):
-        train(network, iterator_train, optimizers, history, epoch, args)
-        accuracy.append(validate(network, iterator_val, history, epoch, args))
-        checkpoint(network, history, args, epoch)
+        train(network, iterator_train, optimizers, epoch, args)
+        accuracy.append(validate(network, iterator_val, epoch, args))
+        checkpoint(network, args, epoch)
 
     print(np.max(np.array(accuracy)))
     print(np.argmax(np.array(accuracy)))
@@ -204,6 +172,9 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
+    parser.add_argument('--crop_height', default=3)
+    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--range_of_compute', default=5, type=int)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -216,7 +187,7 @@ if __name__ == '__main__':
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=256, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=40, type=int,
+    parser.add_argument('--num_epoch', default=100, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
@@ -226,8 +197,6 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_cls', default=5.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_init', default='')
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
 
     # Data related arguments
     parser.add_argument('--num_class', default=293, type=int,

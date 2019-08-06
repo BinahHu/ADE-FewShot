@@ -4,18 +4,18 @@ Dataset for novel classes
 import os
 import json
 import torch
-from dataset.dataset_base import BaseNovelDataset
+from dataset.proto_dataset import NovelProtoDataset
 import cv2
 import math
 import numpy as np
 
-class ObjNovelDataset(BaseNovelDataset):
+
+class NovelDataset(NovelProtoDataset):
     """
     Form batch at object level
     """
-
     def __init__(self, h5path, opt, batch_per_gpu=1, **kwargs):
-        super(ObjNovelDataset, self).__init__(h5path, opt, **kwargs)
+        super(NovelDataset, self).__init__(h5path, opt, **kwargs)
         self.batch_per_gpu = batch_per_gpu
         self.batch_record_list = []
 
@@ -25,6 +25,7 @@ class ObjNovelDataset(BaseNovelDataset):
 
         self.crop_height = opt.crop_height
         self.crop_width = opt.crop_width
+        self.feat_dim = opt.feat_dim
 
     def _get_sub_batch(self):
         while True:
@@ -54,16 +55,12 @@ class ObjNovelDataset(BaseNovelDataset):
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
 
-        this_short_size = 224
-
         # calculate the BATCH's height and width
         # since we concat more than one samples, the batch's h and w shall be larger than EACH sample
         batch_features = torch.zeros(self.batch_per_gpu, self.feat_dim * self.crop_width * self.crop_height)
         batch_labels = torch.zeros(self.batch_per_gpu).int()
-        batch_anchors = torch.zeros(self.batch_per_gpu, 4)
-        batch_scales = torch.zeros(self.batch_per_gpu, 2)
         for i in range(self.batch_per_gpu):
-            batch_features[i] = torch.tensor(batch_records[i]['feature']).view(-1)
+            batch_features[i] = torch.tensor(batch_records[i]['feature'])
             batch_labels[i] = torch.tensor(batch_records[i]['label'].astype(np.float)).int()
             # batch_anchors[i] = torch.tensor(batch_records[i]['anchors'])
             # batch_scales[i] = torch.tensor(batch_records[i]['scales'])
