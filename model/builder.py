@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.tail_blocks import Novel_Classifier, FC_Classifier
+from model.component.classifier import Classifier
 from model.component.resnet import resnet18, resnet50
 import math
 import numpy as np
@@ -37,7 +37,6 @@ class ModelBuilder:
         return backbone
 
     def build_classifier(self):
-        classifier = FC_Classifier(self.args, self.args.feat_dim)
-
+        classifier = Classifier(self.args)
         classifier.apply(self.weight_init)
         return classifier

@@ -118,7 +118,7 @@ def validate(module, iterator, epoch, args):
             
             info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_actual * 100}
             dispepoch = epoch
-            if not args.iswarmup:
+            if not args.isWarmUp:
                 dispepoch += 1
             for tag, value in info.items():
                 args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
@@ -146,7 +146,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 3 or epoch == 6 or epoch == 9) and iteration == 0:
+    if epoch in args.drop_point and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -236,6 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
     parser.add_argument('--model_weight', default='')
+    parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
 
     # Path related arguments
     parser.add_argument('--list_train',
