@@ -187,12 +187,12 @@ def novel_generation(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-root_dataset', default='../data/ADE')
-    parser.add_argument('-origin_dataset', default='ADE_Origin/')
-    parser.add_argument('--supervision_dataset', default='ADE_Supervision/')
-    parser.add_argument('-part', default='Base')
-    parser.add_argument('-shot', default=5)
-    parser.add_argument('-img_size', default='img_path2size.json')
+    parser.add_argument('-root_dataset', default='../data/ADE', help='data file')
+    parser.add_argument('-origin_dataset', default='ADE_Origin/', help='origin dir')
+    parser.add_argument('--supervision_dataset', default='ADE_Supervision/', help='supervision information')
+    parser.add_argument('-part', default='Base', help='Base or Novel')
+    parser.add_argument('-shot', default=5, help='shot in Novel')
+    parser.add_argument('-img_size', default='img_path2size.json', help='img size file')
     parser.add_argument('--supervision_src', default=json.load(open('./supervision.json', 'r')), type=list)
     # example [{'type': 'img', 'name': 'seg', 'path': '1.json'},
     # {'type': 'inst', 'name': 'attr', 'path': 'attr.json'}]

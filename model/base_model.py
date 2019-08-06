@@ -35,6 +35,14 @@ class BaseLearningModule(nn.Module):
         self.mode = 'train'
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
+        """
+        process the data in roi_layer and get the feature
+        :param feature_map: C * H * W
+        :param scale: anchor_num * 2
+        :param anchors: anchor_num * 4
+        :param anchor_num: int
+        :return: feature C * crop_height * crop_width
+        """
         anchors = np.array(anchors.detach().cpu())
         scale = np.array(scale.detach().cpu())
         anchors = anchors / self.down_sampling_rate

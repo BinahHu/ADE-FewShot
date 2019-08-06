@@ -144,7 +144,7 @@ class BaseProtoDataset(Dataset):
         f.close()
 
         self.list_sample = []
-        iterator = filter(lambda x: len(x['anchors']) != 0, old_list_sample)
+        iterator = filter(lambda x: (len(x['anchors']) != 0) and (len(x['anchors']) <= 100), old_list_sample)
         for sample in iterator:
             self.list_sample.append(sample)
 

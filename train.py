@@ -265,31 +265,34 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
     parser.add_argument('--model_weight', default='')
-    parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
-    parser.add_argument('--supervision', default='supervision.json', type=str)
+    parser.add_argument('--log', default='', help='load trained checkpoint')
+    parser.add_argument('--num_class', default=189, type=int, help='number of classes')
+    parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
+    parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
 
-    # Path related arguments
+    # data loading arguments
     parser.add_argument('--list_train',
                         default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
-    parser.add_argument('--root_dataset',
-                        default='../')
-
-    # Train parameters
+    parser.add_argument('--root_dataset', default='../')
+    parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
+    parser.add_argument('--supervision', default='supervision.json', type=str)
     parser.add_argument('--max_anchor_per_img', default=100)
+    parser.add_argument('--workers', default=8, type=int,
+                        help='number of data loading workers')
+    parser.add_argument('--imgShortSize', default=800, type=int,
+                        help='input image size of short edge (int or list)')
+    parser.add_argument('--imgMaxSize', default=1500, type=int,
+                        help='maximum input image size of long edge')
 
-    # optimization related arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3],
-                        help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=2, type=int,
-                        help='input batch size')
-    parser.add_argument('--num_epoch', default=2, type=int,
-                        help='epochs to train for')
+    # running arguments
+    parser.add_argument('--gpus', default=[0, 1, 2, 3], help='gpus to use, e.g. 0-3 or 0,1,2,3')
+    parser.add_argument('--batch_size_per_gpu', default=2, type=int, help='input batch size')
+    parser.add_argument('--num_epoch', default=12, type=int, help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
     parser.add_argument('--train_epoch_iters', default=20, type=int,
@@ -300,36 +303,16 @@ if __name__ == '__main__':
     parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
-    # Warm up
+    # warm up
     parser.add_argument('--warm_up_epoch', type=int, default=1)
     parser.add_argument('--warm_up_factor', default=0.0001)
     parser.add_argument('--warm_up_iters', default=100)
 
-    # Data related arguments
-    parser.add_argument('--num_class', default=189, type=int,
-                        help='number of classes')
-    parser.add_argument('--workers', default=8, type=int,
-                        help='number of data loading workers')
-    parser.add_argument('--imgShortSize', default=800, type=int,
-                        help='input image size of short edge (int or list)')
-    parser.add_argument('--imgMaxSize', default=1500, type=int,
-                        help='maximum input image size of long edge')
-    parser.add_argument('--padding_constant', default=8, type=int,
-                        help='max down sampling rate of the network')
-    parser.add_argument('--down_sampling_rate', default=8, type=int,
-                        help='down sampling rate')
-    parser.add_argument('--sample_type', default='inst',
-                        help='instance level or category level sampling')
-
-    parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./checkpoint',
-                        help='folder to output checkpoints')
-    parser.add_argument('--display_iter', type=int, default=10,
-                        help='frequency to display')
-    parser.add_argument('--log_dir', default="./log_base/",
-                        help='dir to save train and val log')
-    parser.add_argument('--comment', default="this_child_may_save_the_world",
-                        help='add comment to this train')
+    # logging
+    parser.add_argument('--ckpt', default='./checkpoint', help='folder to output checkpoints')
+    parser.add_argument('--display_iter', type=int, default=10, help='frequency to display')
+    parser.add_argument('--log_dir', default="./log_base/", help='dir to save train and val log')
+    parser.add_argument('--comment', default="this_child_may_save_the_world", help='add comment to this train')
 
     args = parser.parse_args()
     args.supervision = json.load(open(args.supervision, 'r'))
