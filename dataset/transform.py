@@ -32,7 +32,7 @@ class Transform:
         """
         if other is None:
             raise Exception('No attribute num for attribute supervision')
-        attr_num = other['attr_num']
+        attr_num = other['num_attr']
         result = np.zeros(attr_num).astype(np.int)
         for i in tensor:
             result[i] = 1

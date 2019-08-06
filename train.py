@@ -142,17 +142,25 @@ def checkpoint(nets, args, epoch_num):
 
 
 def warm_up_adjust_lr(optimizers, epoch, iteration, args):
-    # print('Adjust learning rate in warm up')
-    for optimizer in optimizers:
+    optimizer_feat, optimizer_cls, optimizer_dict = optimizers
+    optimizer_list = [optimizer_feat, optimizer_cls]
+    for optimize_item in optimizer_dict.items():
+        optimizer_list.append(optimize_item[1])
+    for optimizer in optimizer_list:
         lr = args.lr_feat * args.warm_up_factor
-        lr = lr + (args.lr_feat - lr) * (epoch * args.train_epoch_iters + iteration) / args.warm_up_iters
+        lr = lr + (args.lr_feat - lr) * \
+             (epoch * args.train_epoch_iters + iteration) / args.warm_up_iters
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if epoch in args.drop_point and iteration == 0:
-        for optimizer in optimizers:
+    if iteration == 0 and epoch in args.drop_point:
+        optimizer_feat, optimizer_cls, optimizer_dict = optimizers
+        optimizer_list = [optimizer_feat, optimizer_cls]
+        for optimize_item in optimizer_dict.items():
+            optimizer_list.append(optimize_item[1])
+        for optimizer in optimizer_list:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
     return None
@@ -324,5 +332,6 @@ if __name__ == '__main__':
                         help='add comment to this train')
 
     args = parser.parse_args()
-    args.supervision = json.load(open(args.supervison, 'r'))
+    args.supervision = json.load(open(args.supervision, 'r'))
+    print(args.supervision)
     main(args)

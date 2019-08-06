@@ -20,16 +20,15 @@ class AttrSoftLoss(nn.Module):
         """
         scores, attributes = x
         attr_loss = 0.0
-
+        attributes = attributes.float().cuda()
         for i in range(attributes.shape[0]):
             loss_mask = torch.ones(attributes.shape[1]).cuda()
             zeros = (attributes[i, :] == 0).nonzero().cpu().numpy()
             indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.8)), False)
             loss_mask[indices] = 0
 
-            attr_loss += F.multilabel_margin_loss(attributes[i].unsqueeze(0),
-                                                  scores[i].unsqueeze(0),
-                                                  weight=loss_mask)
+            attr_loss += F.multilabel_soft_margin_loss(attributes[i].unsqueeze(0),
+                                                       scores[i].unsqueeze(0), weight=loss_mask)
         attr_loss /= attributes.shape[0]
         return attr_loss
 
@@ -41,7 +40,9 @@ class AttrClassifier(nn.Module):
     def __init__(self, args):
         super(AttrClassifier, self).__init__()
         self.in_dim = args.feat_dim * args.crop_height * args.crop_width
-        self.num_class = args.supervision['attr']['other']['num_attr']
+        for supervision in args.supervision:
+            if supervision['name'] == 'attr':
+                self.num_class = supervision['other']['num_attr']
         self.classifier = nn.Linear(self.in_dim, self.num_class)
         self.sigmoid = nn.Sigmoid()
         self.loss = AttrSoftLoss()

@@ -145,16 +145,16 @@ class BaseDataset(BaseProtoDataset):
                     # determine the shape of the supervision information
                     tensor = getattr(self.transform, name + '_transform')(this_record['anchors'][0][name],
                                                                           supervision['other'])
-                    if tensor.ndim == 3 and output[name] is None:
+                    if tensor.ndim == 2 and output[name] is None:
                         output[name] = torch.zeros(self.batch_per_gpu, self.max_anchor_per_img,
-                                                   tensor.shape[1], tensor.shape[2])
-                    elif tensor.ndim == 2 and output[name] is None:
-                        output[name] = torch.zeros(self.batch_per_gpu, self.max_anchor_per_img, tensor.shape[1])
+                                                   tensor.shape[0], tensor.shape[1])
+                    elif tensor.ndim == 1 and output[name] is None:
+                        output[name] = torch.zeros(self.batch_per_gpu, self.max_anchor_per_img, tensor.shape[0])
 
-                    for j, anchor in this_record['anchors']:
+                    for j, anchor in enumerate(this_record['anchors']):
                         content = anchor[name]
                         tensor = getattr(self.transform, name + '_transform')(content, supervision['other'])
-                        output[name][i, j] = tensor
+                        output[name][i, j] = torch.from_numpy(tensor)
         return output
 
     def __len__(self):
