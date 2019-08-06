@@ -7,7 +7,7 @@ class NovelClassifier(nn.Module):
     def __init__(self, args):
         super(NovelClassifier, self).__init__()
         self.in_dim = args.crop_height * args.crop_width * args.feat_dim
-        self.num_class = args.num_class
+        self.num_class = args.num_novel_class
         self.fc = nn.Linear(self.in_dim, self.num_class)
         self.range_of_compute = args.range_of_compute
         self.loss = nn.CrossEntropyLoss(ignore_index=-1)

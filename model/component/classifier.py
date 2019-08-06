@@ -5,7 +5,7 @@ import torch.nn as nn
 class Classifier(nn.Module):
     def __init__(self, args):
         super(Classifier, self).__init__()
-        self.num_class = args.num_class
+        self.num_class = args.num_base_class
         self.down_sampling_rate = args.down_sampling_rate
         self.fc = nn.Linear(args.feat_dim * args.crop_width * args.crop_height, self.num_class)
         self.loss = nn.CrossEntropyLoss(ignore_index=-1)

@@ -199,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_class', default=293, type=int,
+    parser.add_argument('--num_novel_class', default=293, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
