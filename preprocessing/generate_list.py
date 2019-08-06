@@ -137,11 +137,11 @@ def novel_generation(args):
             continue
         for j in range(0, args.shot):
             img_index = all_list[i][j]['img']
-            sample_list_train[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
+            sample_list_train[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
         for j in range(args.shot, length):
             img_index = all_list[i][j]['img']
-            sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'cls_label': i})
+            sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'novel_img_train.json')
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-root_dataset', default='../data/ADE')
     parser.add_argument('-origin_dataset', default='ADE_Origin/')
-    parser.add_argument('-part', default='Base')
+    parser.add_argument('-part', default='Novel')
     parser.add_argument('-shot', default=5)
     parser.add_argument('-img_size', default='img_path2size.json')
 

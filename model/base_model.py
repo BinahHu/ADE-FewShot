@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
-from model.component.classifier import Classifier
 
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
@@ -26,6 +25,8 @@ class BaseLearningModule(nn.Module):
         self.roi_align = RoIAlign(args.crop_height, args.crop_width, transform_fpcoor=True)
         self.down_sampling_rate = args.down_sampling_rate
 
+        self.mode = 'train'
+
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
         anchors = np.array(anchors.detach().cpu())
         scale = np.array(scale.detach().cpu())
@@ -44,7 +45,31 @@ class BaseLearningModule(nn.Module):
         feature = feature.view(-1, self.args.feat_dim * self.crop_height * self.crop_width)
         return feature
 
+    def predict(self, feed_dict):
+        feature_map = self.backbone(feed_dict['img_data'])
+        batch_img_num = feature_map.shape[0]
+        features = None
+        labels = None
+        for i in range(batch_img_num):
+            anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
+            if anchor_num == 0 or anchor_num >= 100:
+                continue
+            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
+                                                feed_dict['anchors'][i], anchor_num)
+            label = feed_dict['label'][i][:anchor_num].long()
+
+            if features is None:
+                features = feature.clone()
+                labels = label.clone()
+            else:
+                features = torch.stack((features, feature), dim=0)
+                labels = torch.stack((labels, label), dim=0)
+        return features, labels
+
     def forward(self, feed_dict):
+        if self.mode == 'feature':
+            return self.predict(feed_dict)
+
         feature_map = self.backbone(feed_dict['img_data'])
         acc = 0
         loss = 0
