@@ -28,7 +28,7 @@ def train(module, iterator, optimizers, epoch, args):
     ave_acc = AverageMeter()
 
     module.train()
-
+    module.module.mode = 'train'
     # main loop
     tic = time.time()
     for i in range(args.train_epoch_iters):
@@ -49,8 +49,11 @@ def train(module, iterator, optimizers, epoch, args):
 
         # Backward
         loss.backward()
-        for optimizer in optimizers:
-            optimizer.step()
+        optimizer_feat, optimizer_cls, optimizer_dict = optimizers
+        optimizer_feat.step()
+        optimizer_cls.step()
+        for supervision in args.supervision:
+            optimizer_dict[supervision['name']].step()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -69,7 +72,8 @@ def train(module, iterator, optimizers, epoch, args):
                           batch_time.average(), data_time.average(),
                           optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
                           ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
-            info = {'loss-train':ave_total_loss.average(), 'acc-train':ave_acc.average(), 'acc-iter-train': acc_actual * 100}
+            info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
+                    'acc-iter-train': acc_actual * 100}
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -89,6 +93,7 @@ def validate(module, iterator, epoch, args):
     ave_total_loss = AverageMeter()
 
     module.eval()
+    module.module.mode = 'val'
     # main loop
     tic = time.time()
     for i in range(args.val_epoch_iters):
@@ -160,6 +165,13 @@ def main(args):
     feature_extractor = builder.build_backbone()
     classifier = builder.build_classifier()
 
+    # supervision
+    supervision_modules = []
+    for supervision in args.supervision:
+        supervision_modules.append({'name': supervision['name'],
+                                    'module': getattr(builder, 'build_' + supervision['name'])()})
+    setattr(args, 'module', supervision_modules)
+
     dataset_train = BaseDataset(args.list_train, args)
     dataset_train.mode = 'train'
     loader_train = DataLoader(
@@ -193,7 +205,13 @@ def main(args):
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    # supervision optimizers
+    optimizer_dict = dict()
+    for i, supervision in enumerate(args.supervision):
+        optimizer_dict[supervision['name']] = torch.optim.SGD(
+            supervision_modules[i]['module'].parameters(),
+            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls, optimizer_dict]
 
     network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
@@ -219,7 +237,12 @@ def main(args):
                                      lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizer_dict = dict()
+    for supervision in args.supervision:
+        optimizer_dict[supervision['name']] = torch.optim.SGD(
+            getattr(network, supervision['name']).pamameters(),
+            lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay)
+    optimizers = [optimizer_feat, optimizer_cls, optimizer_dict]
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         validate(network, iterator_val, epoch, args)
