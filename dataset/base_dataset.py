@@ -3,6 +3,7 @@ import json
 import torch
 from dataset.proto_dataset import BaseProtoDataset
 import cv2
+from dataset.transform import Transform
 import torchvision
 from torchvision import transforms
 import numpy as np
@@ -28,6 +29,10 @@ class BaseDataset(BaseProtoDataset):
         self.max_anchor_per_img = args.max_anchor_per_img
 
         self.mode = 'train'
+
+        if hasattr(args, 'supervision'):
+            self.supervision = args.supervision
+        self.transform = Transform(args)
 
     def _get_sub_batch(self):
         while True:
@@ -129,6 +134,34 @@ class BaseDataset(BaseProtoDataset):
 
         if self.mode == 'val':
             return output
+
+        if not hasattr(self, 'supervision'):
+            return output
+
+        # add supervision information
+        for supervision in self.supervision:
+            output[supervision['name']] = None
+
+        for i in range(self.batch_per_gpu):
+            this_record = batch_records[i]
+            for supervision in self.supervision:
+                name = supervision['name']
+                # for supervision such as attr
+                if supervision['type'] == 'inst':
+                    # determine the shape of the supervision information
+                    tensor = getattr(self.transform, name + '_transform')(this_record['anchors'][0][name],
+                                                                          supervision['other'])
+                    if tensor.ndim == 3 and output[name] is None:
+                        output[name] = torch.zeros(self.batch_per_gpu, self.max_anchor_per_img,
+                                                   tensor.shape[1], tensor.shape[2])
+                    elif tensor.ndim == 2 and output[name] is None:
+                        output[name] = torch.zeros(self.batch_per_gpu, self.max_anchor_per_img, tensor.shape[1])
+
+                    for j, anchor in this_record['anchors']:
+                        content = anchor[name]
+                        tensor = getattr(self.transform, name + '_transform')(content, supervision['other'])
+                        output[name][i, j] = tensor
+        return output
 
     def __len__(self):
         # It's a fake length due to the trick that every loader maintains its own list

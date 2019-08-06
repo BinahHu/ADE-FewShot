@@ -161,6 +161,7 @@ def main(args):
     classifier = builder.build_classifier()
 
     dataset_train = BaseDataset(args.list_train, args)
+    dataset_train.mode = 'train'
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -169,6 +170,7 @@ def main(args):
         pin_memory=True
     )
     dataset_val = BaseDataset(args.list_val, args)
+    dataset_val.mode = 'val'
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -237,6 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('--crop_width', default=3)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
+    parser.add_argument('--supervision', default='supervision.json', type=str)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -298,5 +301,5 @@ if __name__ == '__main__':
                         help='add comment to this train')
 
     args = parser.parse_args()
-
+    args.supervision = json.load(open(args.supervison, 'r'))
     main(args)
