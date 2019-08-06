@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 from model.component.classifier import Classifier
 from model.component.resnet import resnet18, resnet50
-import math
-import numpy as np
-import random
+from model.component.attr import AttrClassifier
 
 
 class ModelBuilder:
@@ -40,3 +38,8 @@ class ModelBuilder:
         classifier = Classifier(self.args)
         classifier.apply(self.weight_init)
         return classifier
+
+    def build_attr(self):
+        attr_classifier = AttrClassifier(self.args)
+        attr_classifier.apply(self.weight_init)
+        return attr_classifier

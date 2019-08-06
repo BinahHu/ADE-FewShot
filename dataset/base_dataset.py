@@ -1,15 +1,9 @@
 import os
-import json
 import torch
-from dataset.proto_dataset import BaseProtoDataset
+import numpy as np
 import cv2
 from dataset.transform import Transform
-import torchvision
-from torchvision import transforms
-import numpy as np
-from numpy.random import choice
-import math
-import random
+from dataset.proto_dataset import BaseProtoDataset
 
 
 class BaseDataset(BaseProtoDataset):
