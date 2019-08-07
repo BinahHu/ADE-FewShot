@@ -61,9 +61,9 @@ class BaseDataset(BaseProtoDataset):
 
     def __getitem__(self, index):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
-        if not self.if_shuffled:
-            np.random.shuffle(self.list_sample)
-            self.if_shuffled = True
+        # if not self.if_shuffled:
+        #     np.random.shuffle(self.list_sample)
+        #     self.if_shuffled = True
 
         # get sub-batch candidates
         batch_records = self._get_sub_batch()

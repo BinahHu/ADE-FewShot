@@ -29,6 +29,12 @@ def train(module, iterator, optimizers, epoch, args):
     ave_total_loss = AverageMeter()
     ave_acc = AverageMeter()
 
+    if len(args.supervisoin) != 0:
+        ave_loss_cls = AverageMeter()
+        ave_supervision_loss = []
+        for supervision in args.supervision:
+            ave_supervision_loss.append(AverageMeter())
+
     module.train()
     module.module.mode = 'train'
     # main loop
@@ -43,11 +49,15 @@ def train(module, iterator, optimizers, epoch, args):
         data_time.update(time.time() - tic)
 
         module.zero_grad()
-        loss, acc, instances = module(batch_data)
+        loss, acc, instances, loss_cls, loss_supervision = module(batch_data)
         instances = instances.type_as(acc).detach()
         acc = acc.detach()
         loss = (loss * instances).sum() / instances.sum().float()
         acc_actual = (acc * instances).sum() / instances.sum().float()
+
+        if loss_cls is not None:
+            loss_cls = (loss_cls * instances).sum() / instances.sum().float()
+            loss_supervision = (loss_supervision * instances).sum() / instances.sum().float()
 
         # Backward
         loss.backward()
@@ -62,17 +72,28 @@ def train(module, iterator, optimizers, epoch, args):
         for k in range(int(instances.sum())):
             ave_total_loss.update(loss.data.item())
             ave_acc.update(acc_actual * 100)
+            if loss_cls is not None:
+                ave_loss_cls.update(loss_cls.data().item())
+                for j in len(args.supervision):
+                    ave_supervision_loss[j].update(loss_supervision[j])
 
         if i % args.display_iter == 0:
-            print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'lr_feat: {:.6f}, lr_cls: {:.6f}, '
-                  'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
-                  .format(epoch, i, args.train_epoch_iters,
-                          batch_time.average(), data_time.average(),
-                          optimizers[0].param_groups[0]['lr'], optimizers[1].param_groups[0]['lr'],
-                          ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
+            message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
+                      'lr_feat: {:.6f}, lr_cls: {:.6f}, Accuracy: {:4.2f}, ' \
+                      'Loss: {:.6f}, Acc-Iter: {:4.2f}'.format(epoch, i, args.train_epoch_iters, batch_time.average(),
+                                                               data_time.average(), optimizers[0].param_groups[0]['lr'],
+                                                               optimizers[1].param_groups[0]['lr'], ave_acc.average(),
+                                                               ave_total_loss.average(), acc_actual * 100)
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
                     'acc-iter-train': acc_actual * 100}
+            if loss_cls is not None:
+                message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
+                info['loss-cls'] = ave_loss_cls.average()
+                for j in range(len(args.supervision)):
+                    message += 'Loss_{}: {:.6f}, '.format(args.supervision[j]['name'],
+                                                          ave_supervision_loss[j].average())
+                    info['Loss_' + args.supervision[j]['name']] = ave_supervision_loss[j].average()
+
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
