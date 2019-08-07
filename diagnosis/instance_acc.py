@@ -11,6 +11,9 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+import sys
+sys.path.append('../')
+
 from dataset.base_dataset import BaseDataset
 from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
@@ -35,7 +38,7 @@ def base(args):
     network.eval()
     network.module.mode = 'diagnosis'
 
-    dataset_base = BaseDataset(args.ist_base, args)
+    dataset_base = BaseDataset(args.list_base, args)
     loader_base = DataLoader(
         dataset_base, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -45,15 +48,15 @@ def base(args):
     )
     iter_base = iter(loader_base)
 
-    args.base_epoch_iters = \
+    args.epoch_iters = \
         math.ceil(dataset_base.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
-    print('1 Base Epoch = {} iters'.format(args.train_epoch_iters))
+    print('1 Base Epoch = {} iters'.format(args.epoch_iters))
 
     iterations = 0
-    while iterations <= args.train_epoch_iters:
+    while iterations <= args.epoch_iters:
         batch_data = next(iter_base)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, args.train_epoch_iters))
+            print('{} / {}'.format(iterations, args.epoch_iters))
         if iterations == 0:
             preds, labels = network(batch_data)
             preds = np.array(preds.detach().cpu())
@@ -85,9 +88,9 @@ def novel(args):
         drop_last=True,
         pin_memory=True
     )
-    args.novel_epoch_iters = \
+    args.epoch_iters = \
         math.ceil(dataset_novel.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
-    print('1 Novel Epoch = {} iters'.format(args.novel_epoch_iters))
+    print('1 Novel Epoch = {} iters'.format(args.epoch_iters))
     iter_novel = iter(loader_novel)
 
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
@@ -99,10 +102,10 @@ def novel(args):
     preds = None
     labels = None
     iterations = 0
-    while iterations <= args.train_epoch_iters:
+    while iterations <= args.epoch_iters:
         batch_data = next(iter_novel)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, args.train_epoch_iters))
+            print('{} / {}'.format(iterations, args.epoch_iters))
         if iterations == 0:
             preds, labels = network(batch_data)
             preds = np.array(preds.detach().cpu())
@@ -124,13 +127,13 @@ def novel(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dest', default='base', help='base or novel')
+    parser.add_argument('--dest', default='novel', help='base or novel')
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3)
     parser.add_argument('--crop_width', default=3)
-    parser.add_argument('--model_weight', default='')
+    parser.add_argument('--model_weight', default='../ckpt/novel/net_epoch_97.pth')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
     parser.add_argument('--num_novel_class', default=293, type=int)
@@ -139,12 +142,12 @@ if __name__ == '__main__':
 
     # data loading arguments
     parser.add_argument('--list_base',
-                        default='./data/ADE/ADE_Base/base_img_train.json')
+                        default='../data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--list_novel',
-                        default='./data/test_feat/img_val_feat.h5')
-    parser.add_argument('--root_dataset', default='../')
+                        default='../data/test_feat/img_val_feat.h5')
+    parser.add_argument('--root_dataset', default='../../')
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
@@ -154,8 +157,8 @@ if __name__ == '__main__':
     parser.add_argument('--novel_epoch_iters', default=10)
 
     # running arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3], help='gpus to use, e.g. 0-3 or 0,1,2,3')
-    parser.add_argument('--batch_size_per_gpu', default=[2, 256], type=int, help='input batch size')
+    parser.add_argument('--gpus', default=[0], help='gpus to use, e.g. 0-3 or 0,1,2,3')
+    parser.add_argument('--batch_size_per_gpu', default=[1, 1], type=int, help='input batch size')
     parser.add_argument('--epoch_iters', default=20, type=int)
 
     # logging

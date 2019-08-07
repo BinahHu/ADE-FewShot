@@ -33,7 +33,8 @@ class BaseLearningModule(nn.Module):
                 setattr(self, module['name'], module['module'])
 
         self.mode = 'train'
-        self.classifier.mode = self.mode
+        if self.classifier is not None:
+            self.classifier.mode = self.mode
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
         """
@@ -88,6 +89,7 @@ class BaseLearningModule(nn.Module):
         :param feed_dict:
         :return: prediction and labels
         """
+        self.classifier.mode = 'diagnosis'
         feature_map = self.backbone(feed_dict['img_data'])
         batch_img_num = feature_map.shape[0]
         predictions = None
@@ -121,6 +123,8 @@ class BaseLearningModule(nn.Module):
         batch_img_num = feature_map.shape[0]
 
         instance_sum = torch.tensor([0]).cuda()
+        loss_classification = torch.zeros(1)
+        loss_supervision = torch.zeros(len(self.args.supervision))
         for i in range(batch_img_num):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
             if anchor_num == 0 or anchor_num >= 100:
@@ -132,7 +136,7 @@ class BaseLearningModule(nn.Module):
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
             acc += acc_cls * labels.shape[0]
-
+            loss_classification += loss_cls.item() * labels.shape[0]
             # do not contain other supervision
             if not hasattr(self.args, 'module'):
                 continue
@@ -150,8 +154,17 @@ class BaseLearningModule(nn.Module):
                         input_agg[key] = feed_dict[key][i]
 
             # process through each branch
-            for supervision in self.args.supervision:
+            for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 loss += (loss_branch * supervision['weight'])
+                loss_supervision[j] += loss_branch.item() * labels.shape[0]
 
-        return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
+        if self.mode == 'val':
+            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
+        if hasattr(self.args, 'module'):
+            loss_supervision = loss_supervision.cuda()
+            loss_classification = loss_classification.cuda()
+            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
+                   loss_supervision / (instance_sum[0] + 1e-10), loss_classification / (instance_sum[0] + 1e-10)
+        else:
+            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, None, None
