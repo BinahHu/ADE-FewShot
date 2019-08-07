@@ -155,6 +155,19 @@ class BaseDataset(BaseProtoDataset):
                         content = anchor[name]
                         tensor = getattr(self.transform, name + '_transform')(content, supervision['other'])
                         output[name][i, j] = torch.from_numpy(tensor)
+
+                elif supervision['type'] == 'img':
+                    # for the supervision such as segmentation
+                    if supervision['content'] == 'map':
+                        img = getattr(self.transform, name + '_transform')(this_record[name], supervision['other'])
+                        img = cv2.resize(img, (batch_resize_width, batch_resize_height),
+                                         interpolation=cv2.INTER_NEAREST)
+                        if img.ndim == 2 and output[name] is None:
+                            output[name] = torch.zeros(self.batch_per_gpu, batch_resize_height, batch_resize_width)
+                        elif img.ndim == 3 and output[name] is None:
+                            output[name] = torch.zeros(self.batch_per_gpu, img.shape[0],
+                                                       batch_resize_height, batch_resize_width)
+                        output[name][i] = torch.from_numpy(img)
         return output
 
     def __len__(self):
