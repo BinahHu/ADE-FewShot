@@ -149,6 +149,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_attr', default=160, type=int)
     parser.add_argument('--is_soft', default=False, help='use soft attrinute loss')
 
+
+
+
     # Data related arguments
     parser.add_argument('--num_class', default=189, type = int)
     parser.add_argument('--workers', default=0, type=int,

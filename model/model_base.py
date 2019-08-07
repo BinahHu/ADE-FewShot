@@ -114,6 +114,8 @@ class LearningModule(LearningModuleBase):
             #Ignore
             if crit['weight'] == 0:
                 continue
+            if crit['type'] == 'orth':
+                continue
 
             #Load Label
             label = feed_dict['cls_label'].long()
@@ -148,6 +150,23 @@ class LearningModule(LearningModuleBase):
                 acc_iter, preds, labels = self._acc(pred, label, self.output)
                 acc += acc_iter
             accFlag = True
+
+        #orth loss
+        if self.losstype == 'Attr' and self.is_soft:
+            for crit in self.crit:
+                if crit['type'] != 'orth':
+                    continue
+                if crit['weight'] == 0:
+                    continue
+                orth_loss = torch.zeros(1, requires_grad=True).cuda()
+                for name, param in self.embed.named_parameters():
+                    if 'bias' not in name:
+                        param_flat = param.view(param.shape[0], -1)
+                        sym = torch.mm(param_flat, torch.t(param_flat))
+                        sym -= torch.eye(param_flat.shape[0]).cuda()
+                        orth_loss = orth_loss + sym.sum()
+                orth_loss = orth_loss[0].abs()
+                loss += crit['weight'] * orth_loss
 
         if self.output == 'dumb':
             return loss, acc

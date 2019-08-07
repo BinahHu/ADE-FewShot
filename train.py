@@ -193,11 +193,13 @@ def main(args):
         crit_attr = None
         weirght_attr = 0
 
-
+    weight_orth = args.orth_weight
+    crit_orth = None
     crit_seg = nn.NLLLoss(ignore_index=-1)
     crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
             {'type': 'seg', 'crit': crit_seg, 'weight': 0},
-            {'type': 'attr', 'crit': crit_attr, 'weight': weirght_attr}]
+            {'type': 'attr', 'crit': crit_attr, 'weight': weirght_attr},
+            {'type': 'orth', 'crit': crit_orth, 'weight': weight_orth}]
 
     if args.mask:
         args.list_train = args.list_train[:-5] + "_mask" + args.list_train[-5:]
