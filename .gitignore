@@ -9,5 +9,9 @@ ckpt*/
 log*/
 model/prtrain/
 run.sh
+test.sh
+val.sh
+sleep.sh
+feature.sh
 diagnosis/*.json
 diagnosis/*.pth
