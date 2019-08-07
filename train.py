@@ -268,8 +268,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=3, type=int)
+    parser.add_argument('--crop_width', default=3, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -318,8 +318,9 @@ if __name__ == '__main__':
     parser.add_argument('--comment', default="this_child_may_save_the_world", help='add comment to this train')
 
     args = parser.parse_args()
-    args.supervision = json.load(open(args.supervision, 'r'))
-    print(args.supervision)
+    if args.supervision != '':
+        args.supervision = json.load(open(args.supervision, 'r'))
+        print(args.supervision)
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
     main(args)
