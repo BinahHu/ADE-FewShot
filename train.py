@@ -268,8 +268,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=1)
+    parser.add_argument('--crop_width', default=1)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -283,7 +283,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
     parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
-    parser.add_argument('--supervision', default='supervision.json', type=str)
+    parser.add_argument('--supervision', default='', type=str)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
@@ -318,8 +318,13 @@ if __name__ == '__main__':
     parser.add_argument('--comment', default="this_child_may_save_the_world", help='add comment to this train')
 
     args = parser.parse_args()
-    args.supervision = json.load(open(args.supervision, 'r'))
-    print(args.supervision)
+
+    if args.supervision != '':
+        args.supervision = json.load(open(args.supervision, 'r'))
+        print(args.supervision)
+    else:
+        args.supervision = []
+
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
     main(args)
