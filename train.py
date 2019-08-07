@@ -293,8 +293,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1)
-    parser.add_argument('--crop_width', default=1)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
