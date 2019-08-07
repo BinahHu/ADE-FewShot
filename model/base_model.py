@@ -159,7 +159,11 @@ class BaseLearningModule(nn.Module):
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item() * labels.shape[0]
 
+        if self.mode == 'val':
+            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
         if hasattr(self.args, 'module'):
+            loss_supervision = loss_supervision.cuda()
+            loss_classification = loss_classification.cuda()
             return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
                    loss_supervision / (instance_sum[0] + 1e-10), loss_classification / (instance_sum[0] + 1e-10)
         else:
