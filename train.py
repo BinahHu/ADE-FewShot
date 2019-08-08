@@ -46,7 +46,6 @@ def train(module, iterator, optimizers, epoch, args):
             warm_up_adjust_lr(optimizers, epoch, i, args)
         else:
             train_adjust_lr(optimizers, epoch, i, args)
-
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -154,7 +153,6 @@ def validate(module, iterator, epoch, args):
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), ave_total_loss.average(), acc_disp / inst_disp * 100))
-            
             info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_disp / inst_disp * 100}
             acc_disp = 0
             inst_disp = 0
@@ -320,7 +318,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[13], type=list)
+    parser.add_argument('--drop_point', default=[3, 6, 9], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

@@ -172,8 +172,8 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
     parser.add_argument('--range_of_compute', default=5, type=int)
 
     # Path related arguments

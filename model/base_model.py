@@ -3,6 +3,16 @@ import torch.nn as nn
 import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
+import logging
+logging.basicConfig(level=logging.DEBUG,#控制台打印的日志级别
+                    filename='train.log',
+                    filemode='a',##模式，有w和a，w就是写模式，每次都会重新写日志，覆盖之前的日志
+                    #a是追加模式，默认如果不写的话，就是追加模式
+                    format=
+                    '%(asctime)s - %(levelname)s: %(message)s'
+                    #日志格式
+                    )
+
 
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
@@ -132,6 +142,8 @@ class BaseLearningModule(nn.Module):
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             labels = feed_dict['label'][i, : anchor_num].long()
+            if labels.get_device() == 999:
+                logging.info("Model " + str(labels))
             loss_cls, acc_cls = self.classifier([feature, labels])
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
@@ -157,7 +169,7 @@ class BaseLearningModule(nn.Module):
             for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 loss += (loss_branch * supervision['weight'])
-                loss_supervision[j] += loss_branch.item() * labels.shape[0]
+                loss_supervision[j] += loss_branch.item()
 
         if self.mode == 'val':
             return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum

@@ -110,8 +110,8 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1)
-    parser.add_argument('--crop_width', default=1)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
 
     # Path related arguments
     parser.add_argument('--data_train',

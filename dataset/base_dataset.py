@@ -4,7 +4,15 @@ import numpy as np
 import cv2
 from dataset.transform import Transform
 from dataset.proto_dataset import BaseProtoDataset
-
+import logging
+logging.basicConfig(level=logging.DEBUG,#控制台打印的日志级别
+                    filename='train.log',
+                    filemode='a',##模式，有w和a，w就是写模式，每次都会重新写日志，覆盖之前的日志
+                    #a是追加模式，默认如果不写的话，就是追加模式
+                    format=
+                    '%(asctime)s - %(levelname)s: %(message)s'
+                    #日志格式
+                    )
 
 class BaseDataset(BaseProtoDataset):
     """
@@ -38,6 +46,7 @@ class BaseDataset(BaseProtoDataset):
                     self.cur_idx = 0
                     np.random.shuffle(self.list_sample)
                 continue
+            #logging.info("Here "+ this_sample['fpath_img'])
             if this_sample['height'] > this_sample['width']:
                 self.batch_record_list[0].append(this_sample)  # h > w, go to 1st class
             else:
@@ -61,9 +70,9 @@ class BaseDataset(BaseProtoDataset):
 
     def __getitem__(self, index):
         # NOTE: random shuffle for the first time. shuffle in __init__ is useless
-        # if not self.if_shuffled:
-        #     np.random.shuffle(self.list_sample)
-        #     self.if_shuffled = True
+        if not self.if_shuffled:
+            np.random.shuffle(self.list_sample)
+            self.if_shuffled = True
 
         # get sub-batch candidates
         batch_records = self._get_sub_batch()
@@ -104,6 +113,7 @@ class BaseDataset(BaseProtoDataset):
 
             # load image and label
             image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
+            #logging.info("Dataset " + this_record['fpath_img'])
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)
             assert (img.ndim == 3)
             # note that each sample within a mini batch has different scale param
