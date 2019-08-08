@@ -4,6 +4,7 @@ import functools
 import fnmatch
 import numpy as np
 import torch
+import json
 
 
 def find_recursive(root_dir, ext='.jpg'):
@@ -188,3 +189,33 @@ def selective_load_weights(network, path):
     print("Load weight from {}".format(path))
     network.load_state_dict(
         torch.load(path, map_location=lambda storage, loc: storage), strict=False)
+
+
+def category_acc(acc_data, args):
+    acc = acc_data[0] / (acc_data[1] + 1e-10)
+    log_path = os.path.join(args.ckpt + 'category_acc.json')
+    if os.path.exists(log_path):
+        f = open(log_path, 'r')
+        data = json.load(f)
+        f.close()
+        data.append(acc.tolist())
+    else:
+        data = list()
+        data.append(acc.tolist())
+    f = open(log_path, 'w')
+    json.dump(data, f)
+    f.close()
+
+    ave_path = os.path.join(args.ckpt + 'ave_category.json')
+    if os.path.exists(ave_path):
+        f = open(ave_path, 'r')
+        data = json.load(f)
+        f.close()
+        data.append(acc.mean().item())
+    else:
+        data = list()
+        data.append(acc.mean().item())
+    f = open(ave_path, 'w')
+    json.dump(data, f)
+    f.close()
+    return acc.mean()

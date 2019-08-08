@@ -18,7 +18,7 @@ from model.builder import ModelBuilder
 from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
 
-from utils import selective_load_weights
+from utils import selective_load_weights, category_acc
 
 from logger import Logger
 
@@ -28,6 +28,8 @@ def train(module, iterator, optimizers, epoch, args):
     data_time = AverageMeter()
     ave_total_loss = AverageMeter()
     ave_acc = AverageMeter()
+
+    category_accuracy = torch.zeros(2, args.num_base_class)
 
     if len(args.supervision) != 0:
         ave_loss_cls = AverageMeter()
@@ -49,18 +51,19 @@ def train(module, iterator, optimizers, epoch, args):
         data_time.update(time.time() - tic)
 
         module.zero_grad()
-        loss, acc, instances, loss_cls, loss_supervision = module(batch_data)
+        category_batch_acc, loss, acc, instances, loss_supervision, loss_cls = module(batch_data)
+        category_batch_acc = category_batch_acc.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2*j:2*j+1, :]
+
         instances = instances.type_as(acc).detach()
         acc = acc.detach()
         loss = (loss * instances).sum() / instances.sum().float()
         acc_actual = (acc * instances).sum() / instances.sum().float()
 
-        # print(loss_cls)
-        # print(loss_supervision)
         if loss_cls is not None:
             loss_cls = (loss_cls * instances).sum() / instances.sum().float()
             loss_supervision = (loss_supervision * instances).sum() / instances.sum().float()
-
         # Backward
         loss.backward()
         for optimizer in optimizers:
@@ -77,7 +80,7 @@ def train(module, iterator, optimizers, epoch, args):
             if loss_cls is not None:
                 ave_loss_cls.update(loss_cls.item())
                 for j in range(len(args.supervision)):
-                    ave_supervision_loss[j].update(loss_supervision)
+                    ave_supervision_loss[j].update(loss_supervision.item())
 
         if i % args.display_iter == 0:
             message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
@@ -108,6 +111,8 @@ def train(module, iterator, optimizers, epoch, args):
         del acc_actual
         del instances
         del batch_data
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
 
 
 def validate(module, iterator, epoch, args):
@@ -120,11 +125,16 @@ def validate(module, iterator, epoch, args):
     module.module.mode = 'val'
     # main loop
     tic = time.time()
+    category_accuracy = torch.zeros(2, args.num_base_class)
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        loss, acc, instances = module(batch_data)
+        category_batch_acc, loss, acc, instances = module(batch_data)
+        category_batch_acc = category_batch_acc.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2 * j:2 * j + 1, :]
+
         instances = instances.type_as(acc).detach().cpu()
         acc = acc.detach().cpu()
         acc_actual = (acc * instances).sum() / instances.sum().float()
@@ -153,6 +163,8 @@ def validate(module, iterator, epoch, args):
                 args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
         del batch_data
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
 
 
 def checkpoint(nets, args, epoch_num):
@@ -199,7 +211,7 @@ def main(args):
 
     dataset_train = BaseDataset(args.list_train, args)
     dataset_train.mode = 'train'
-    loader_train = DataLoader(
+    loader_train = torch.utils.data.DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
         num_workers=int(args.workers),
@@ -208,7 +220,7 @@ def main(args):
     )
     dataset_val = BaseDataset(args.list_val, args)
     dataset_val.mode = 'val'
-    loader_val = DataLoader(
+    loader_val = torch.utils.data.DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
         num_workers=int(args.workers),
@@ -310,7 +322,7 @@ if __name__ == '__main__':
     parser.add_argument('--root_dataset', default='../')
     parser.add_argument('--drop_point', default=[15], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=4, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
