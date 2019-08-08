@@ -39,6 +39,8 @@ def train(module, iterator, optimizers, epoch, args):
     module.module.mode = 'train'
     # main loop
     tic = time.time()
+    acc_disp = 0
+    inst_disp = 0
     for i in range(args.train_epoch_iters):
         if args.isWarmUp is True:
             warm_up_adjust_lr(optimizers, epoch, i, args)
@@ -54,6 +56,8 @@ def train(module, iterator, optimizers, epoch, args):
         acc = acc.detach()
         loss = (loss * instances).sum() / instances.sum().float()
         acc_actual = (acc * instances).sum() / instances.sum().float()
+        acc_disp += (acc * instances).sum()
+        inst_disp += instances.sum()
 
         # print(loss_cls)
         # print(loss_supervision)
@@ -85,9 +89,11 @@ def train(module, iterator, optimizers, epoch, args):
                       'Loss: {:.6f}, Acc-Iter: {:4.2f}, '.format(epoch, i, args.train_epoch_iters, batch_time.average(),
                                                                data_time.average(), optimizers[0].param_groups[0]['lr'],
                                                                optimizers[1].param_groups[0]['lr'], ave_acc.average(),
-                                                               ave_total_loss.average(), acc_actual * 100)
+                                                               ave_total_loss.average(), acc_disp / inst_disp * 100)
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
-                    'acc-iter-train': acc_actual * 100}
+                    'acc-iter-train': acc_disp / inst_disp * 100}
+            acc_disp = 0
+            inst_disp = 0
             if loss_cls is not None:
                 message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
@@ -120,6 +126,8 @@ def validate(module, iterator, epoch, args):
     module.module.mode = 'val'
     # main loop
     tic = time.time()
+    acc_disp = 0
+    inst_disp = 0
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -129,6 +137,8 @@ def validate(module, iterator, epoch, args):
         acc = acc.detach().cpu()
         acc_actual = (acc * instances).sum() / instances.sum().float()
         loss = (loss.detach().cpu() * instances).sum() / instances.sum().float()
+        acc_disp += (acc * instances).sum()
+        inst_disp += instances.sum()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -143,9 +153,11 @@ def validate(module, iterator, epoch, args):
                   'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
-                          ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
+                          ave_acc.average(), ave_total_loss.average(), acc_disp / inst_disp * 100))
             
-            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_actual * 100}
+            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_disp / inst_disp * 100}
+            acc_disp = 0
+            inst_disp = 0
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -308,7 +320,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[15], type=list)
+    parser.add_argument('--drop_point', default=[13], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
