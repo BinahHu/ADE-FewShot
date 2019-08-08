@@ -13,5 +13,7 @@ test.sh
 val.sh
 sleep.sh
 feature.sh
+model.log
+train.log
 diagnosis/*.json
 diagnosis/*.pth

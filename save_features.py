@@ -110,8 +110,8 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
 
     # Path related arguments
     parser.add_argument('--data_train',
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('--root_dataset',
                         default='../')
 
-    # optimization related arguments
+    # optimization related argument
     parser.add_argument('--gpus', default=[0],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=1, type=int,

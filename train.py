@@ -19,7 +19,6 @@ from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
 
 from utils import selective_load_weights, category_acc
-
 from logger import Logger
 
 
@@ -41,12 +40,13 @@ def train(module, iterator, optimizers, epoch, args):
     module.module.mode = 'train'
     # main loop
     tic = time.time()
+    acc_disp = 0
+    inst_disp = 0
     for i in range(args.train_epoch_iters):
         if args.isWarmUp is True:
             warm_up_adjust_lr(optimizers, epoch, i, args)
         else:
             train_adjust_lr(optimizers, epoch, i, args)
-
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -139,6 +139,8 @@ def validate(module, iterator, epoch, args):
         acc = acc.detach().cpu()
         acc_actual = (acc * instances).sum() / instances.sum().float()
         loss = (loss.detach().cpu() * instances).sum() / instances.sum().float()
+        acc_disp += (acc * instances).sum()
+        inst_disp += instances.sum()
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -154,8 +156,10 @@ def validate(module, iterator, epoch, args):
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
-            
-            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_actual * 100}
+            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(),
+                    'acc-iter-val': acc_actual * 100}
+            acc_disp = 0
+            inst_disp = 0
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -189,7 +193,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
         times = args.drop_point.index(epoch)
-        for optimizer in optimizers:
+        for optimizer in optimizers[2:]:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / pow(10, times)
     return None
@@ -211,7 +215,7 @@ def main(args):
 
     dataset_train = BaseDataset(args.list_train, args)
     dataset_train.mode = 'train'
-    loader_train = torch.utils.data.DataLoader(
+    loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
         num_workers=int(args.workers),
@@ -220,7 +224,7 @@ def main(args):
     )
     dataset_val = BaseDataset(args.list_val, args)
     dataset_val.mode = 'val'
-    loader_val = torch.utils.data.DataLoader(
+    loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
         num_workers=int(args.workers),
@@ -305,8 +309,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1)
-    parser.add_argument('--crop_width', default=1)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -320,9 +324,9 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[15], type=list)
+    parser.add_argument('--drop_point', default=[13, 14, 15], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=4, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
