@@ -11,7 +11,7 @@ import torch.nn as nn
 from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
-from utils import AverageMeter
+from utils import AverageMeter, category_acc
 from model.parallel.replicate import patch_replication_callback
 from model.novel_model import NovelClassifier
 
@@ -75,14 +75,18 @@ def validate(module, iterator, epoch, args):
     tic = time.time()
     acc_iter = 0
     acc_iter_num = 0
+    category_accuracy = torch.zeros(2, args.num_base_class)
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        acc = module(batch_data)
+        acc, category_batch_acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
         acc_iter_num += 1
+
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2*j:2*j+1, :]
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -100,7 +104,9 @@ def validate(module, iterator, epoch, args):
             acc_iter = 0
             acc_iter_num = 0
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
-    return ave_acc.average()
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
+    return [ave_acc.average(), acc]
 
 
 def checkpoint(nets, args, epoch_num):

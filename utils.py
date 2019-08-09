@@ -192,7 +192,7 @@ def selective_load_weights(network, path):
 
 
 def category_acc(acc_data, args):
-    acc = acc_data[0] / (acc_data[1] + 1e-10)
+    acc = acc_data[0].float() / (acc_data[1].float() + 1e-10)
     log_path = os.path.join(args.ckpt + 'category_acc.json')
     if os.path.exists(log_path):
         f = open(log_path, 'r')

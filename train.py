@@ -139,9 +139,6 @@ def validate(module, iterator, epoch, args):
         acc = acc.detach().cpu()
         acc_actual = (acc * instances).sum() / instances.sum().float()
         loss = (loss.detach().cpu() * instances).sum() / instances.sum().float()
-        acc_disp += (acc * instances).sum()
-        inst_disp += instances.sum()
-
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
@@ -158,8 +155,6 @@ def validate(module, iterator, epoch, args):
                           ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
             info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(),
                     'acc-iter-val': acc_actual * 100}
-            acc_disp = 0
-            inst_disp = 0
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -324,7 +319,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[13, 14, 15], type=list)
+    parser.add_argument('--drop_point', default=[13, 14], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

@@ -49,7 +49,7 @@ class NovelClassifier(nn.Module):
         return acc
 
     def acc(self, pred, label):
-        category_acc = torch.zeros(2, self.num_class)
+        category_acc = torch.zeros(2, self.num_class).cuda()
         acc_sum = 0
         num = pred.shape[0]
         preds = np.array(pred.detach().cpu())

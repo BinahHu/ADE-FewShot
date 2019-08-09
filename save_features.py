@@ -69,7 +69,7 @@ def save_feature(args):
             labels = np.hstack((labels, label))
         iterations += 1
 
-    f = h5py.File('data/test_feat/img_train_feat.h5', 'w')
+    f = h5py.File('data/test_feat/img_train_feat_baseline.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -95,7 +95,7 @@ def save_feature(args):
             labels = np.hstack((labels, label))
         iterations += 1
 
-    f = h5py.File('data/test_feat/img_val_feat.h5', 'w')
+    f = h5py.File('data/test_feat/img_val_feat_baseline.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
