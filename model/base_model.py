@@ -170,4 +170,5 @@ class BaseLearningModule(nn.Module):
             return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
                    loss_supervision / (instance_sum[0] + 1e-10), loss_classification / (instance_sum[0] + 1e-10)
         else:
-            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, None, None
+            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), \
+                   instance_sum, None, None
