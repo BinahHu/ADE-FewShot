@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import logging
 
 
 class Classifier(nn.Module):
@@ -12,13 +13,18 @@ class Classifier(nn.Module):
         self.mode = 'train'
 
     def _acc(self, pred, label):
+        category_accuracy = torch.zeros(2, self.num_class)
         _, preds = torch.max(pred, dim=1)
         valid = (label >= 0).long()
         acc_sum = torch.sum(valid * (preds == label).long())
         instance_sum = torch.sum(valid)
         acc = acc_sum.float() / (instance_sum.float() + 1e-10)
+        for i, label_instance in enumerate(label):
+            category_accuracy[1, label_instance] += 1
+            if preds[i] == label_instance:
+                category_accuracy[0, label_instance] += 1
         del pred
-        return acc
+        return acc, category_accuracy
 
     def diagnosis(self, x):
         """
@@ -37,5 +43,6 @@ class Classifier(nn.Module):
         feature, labels = x
         pred = self.fc(feature)
         loss = self.loss(pred, labels)
-        acc = self._acc(pred, labels)
-        return loss, acc
+        acc, category_accuracy = self._acc(pred, labels)
+
+        return loss, acc, category_accuracy

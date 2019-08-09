@@ -49,13 +49,16 @@ class NovelClassifier(nn.Module):
         return acc
 
     def acc(self, pred, label):
+        category_acc = torch.zeros(2, self.num_class).cuda()
         acc_sum = 0
         num = pred.shape[0]
         preds = np.array(pred.detach().cpu())
         preds = np.argsort(preds)
         label = np.array(label.detach().cpu())
         for i in range(num):
+            category_acc[1, label[i]] += 1
             if label[i] in preds[i, -self.range_of_compute:]:
                 acc_sum += 1
+                category_acc[0, label[i]] += 1
         acc = torch.tensor(acc_sum / (num + 1e-10)).cuda()
-        return acc
+        return acc, category_acc

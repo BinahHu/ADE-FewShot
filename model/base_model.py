@@ -117,6 +117,8 @@ class BaseLearningModule(nn.Module):
         elif self.mode == 'diagnosis':
             return self.diagnosis(feed_dict)
 
+        category_accuracy = torch.zeros(2, self.args.num_base_class).cuda()
+
         feature_map = self.backbone(feed_dict['img_data'])
         acc = 0
         loss = 0
@@ -132,11 +134,12 @@ class BaseLearningModule(nn.Module):
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             labels = feed_dict['label'][i, : anchor_num].long()
-            loss_cls, acc_cls = self.classifier([feature, labels])
+            loss_cls, acc_cls, category_acc_img = self.classifier([feature, labels])
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
             acc += acc_cls * labels.shape[0]
             loss_classification += loss_cls.item() * labels.shape[0]
+            category_accuracy += category_acc_img.cuda()
             # do not contain other supervision
             if not hasattr(self.args, 'module'):
                 continue
@@ -157,14 +160,15 @@ class BaseLearningModule(nn.Module):
             for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 loss += (loss_branch * supervision['weight'])
-                loss_supervision[j] += loss_branch.item() * labels.shape[0]
+                loss_supervision[j] += loss_branch.item()
 
         if self.mode == 'val':
-            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
+            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
         if hasattr(self.args, 'module'):
             loss_supervision = loss_supervision.cuda()
             loss_classification = loss_classification.cuda()
-            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
+            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
                    loss_supervision / (instance_sum[0] + 1e-10), loss_classification / (instance_sum[0] + 1e-10)
         else:
-            return loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, None, None
+            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), \
+                   instance_sum, None, None

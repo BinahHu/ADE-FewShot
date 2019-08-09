@@ -18,8 +18,7 @@ from model.builder import ModelBuilder
 from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
 
-from utils import selective_load_weights
-
+from utils import selective_load_weights, category_acc
 from logger import Logger
 
 
@@ -28,6 +27,8 @@ def train(module, iterator, optimizers, epoch, args):
     data_time = AverageMeter()
     ave_total_loss = AverageMeter()
     ave_acc = AverageMeter()
+
+    category_accuracy = torch.zeros(2, args.num_base_class)
 
     if len(args.supervision) != 0:
         ave_loss_cls = AverageMeter()
@@ -44,23 +45,23 @@ def train(module, iterator, optimizers, epoch, args):
             warm_up_adjust_lr(optimizers, epoch, i, args)
         else:
             train_adjust_lr(optimizers, epoch, i, args)
-
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
         module.zero_grad()
-        loss, acc, instances, loss_cls, loss_supervision = module(batch_data)
+        category_batch_acc, loss, acc, instances, loss_supervision, loss_cls = module(batch_data)
+        category_batch_acc = category_batch_acc.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2*j:2*j+2, :]
+
         instances = instances.type_as(acc).detach()
         acc = acc.detach()
         loss = (loss * instances).sum() / instances.sum().float()
         acc_actual = (acc * instances).sum() / instances.sum().float()
 
-        # print(loss_cls)
-        # print(loss_supervision)
-        if loss_cls is not None:
+        if loss_supervision is not None:
             loss_cls = (loss_cls * instances).sum() / instances.sum().float()
             loss_supervision = (loss_supervision * instances).sum() / instances.sum().float()
-
         # Backward
         loss.backward()
         for optimizer in optimizers:
@@ -77,7 +78,7 @@ def train(module, iterator, optimizers, epoch, args):
             if loss_cls is not None:
                 ave_loss_cls.update(loss_cls.item())
                 for j in range(len(args.supervision)):
-                    ave_supervision_loss[j].update(loss_supervision)
+                    ave_supervision_loss[j].update(loss_supervision.item())
 
         if i % args.display_iter == 0:
             message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
@@ -88,7 +89,7 @@ def train(module, iterator, optimizers, epoch, args):
                                                                ave_total_loss.average(), acc_actual * 100)
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
                     'acc-iter-train': acc_actual * 100}
-            if loss_cls is not None:
+            if loss_supervision is not None:
                 message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
                 for j in range(len(args.supervision)):
@@ -108,6 +109,8 @@ def train(module, iterator, optimizers, epoch, args):
         del acc_actual
         del instances
         del batch_data
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
 
 
 def validate(module, iterator, epoch, args):
@@ -120,16 +123,20 @@ def validate(module, iterator, epoch, args):
     module.module.mode = 'val'
     # main loop
     tic = time.time()
+    category_accuracy = torch.zeros(2, args.num_base_class)
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        loss, acc, instances = module(batch_data)
+        category_batch_acc, loss, acc, instances = module(batch_data)
+        category_batch_acc = category_batch_acc.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2 * j:2 * j + 2, :]
+
         instances = instances.type_as(acc).detach().cpu()
         acc = acc.detach().cpu()
         acc_actual = (acc * instances).sum() / instances.sum().float()
         loss = (loss.detach().cpu() * instances).sum() / instances.sum().float()
-
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
@@ -144,8 +151,8 @@ def validate(module, iterator, epoch, args):
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
-            
-            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(), 'acc-iter-val': acc_actual * 100}
+            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(),
+                    'acc-iter-val': acc_actual * 100}
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -153,6 +160,8 @@ def validate(module, iterator, epoch, args):
                 args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
         del batch_data
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
 
 
 def checkpoint(nets, args, epoch_num):
@@ -176,10 +185,9 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
-        times = args.drop_point.index(epoch)
-        for optimizer in optimizers:
+        for optimizer in optimizers[2:]:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / pow(10, times)
+                param_group['lr'] = param_group['lr'] / 10
     return None
 
 
@@ -191,11 +199,12 @@ def main(args):
     classifier = builder.build_classifier()
 
     # supervision
-    supervision_modules = []
-    for supervision in args.supervision:
-        supervision_modules.append({'name': supervision['name'],
-                                    'module': getattr(builder, 'build_' + supervision['name'])()})
-    setattr(args, 'module', supervision_modules)
+    if len(args.supervision) != 0:
+        supervision_modules = []
+        for supervision in args.supervision:
+            supervision_modules.append({'name': supervision['name'],
+                                        'module': getattr(builder, 'build_' + supervision['name'])()})
+        setattr(args, 'module', supervision_modules)
 
     dataset_train = BaseDataset(args.list_train, args)
     dataset_train.mode = 'train'
@@ -293,8 +302,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1)
-    parser.add_argument('--crop_width', default=1)
+    parser.add_argument('--crop_height', default=3, type=int)
+    parser.add_argument('--crop_width', default=3, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -308,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[15], type=list)
+    parser.add_argument('--drop_point', default=[13, 14], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

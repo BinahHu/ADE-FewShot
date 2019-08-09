@@ -11,7 +11,7 @@ import torch.nn as nn
 from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
-from utils import AverageMeter
+from utils import AverageMeter, category_acc
 from model.parallel.replicate import patch_replication_callback
 from model.novel_model import NovelClassifier
 
@@ -75,14 +75,19 @@ def validate(module, iterator, epoch, args):
     tic = time.time()
     acc_iter = 0
     acc_iter_num = 0
+    category_accuracy = torch.zeros(2, args.num_novel_class)
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        acc = module(batch_data)
+        acc, category_batch_acc = module(batch_data)
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
         acc_iter_num += 1
+        category_batch_acc = category_batch_acc.cpu()
+        # print(category_batch_acc[:, :10])
+        for j in range(len(args.gpus)):
+            category_accuracy += category_batch_acc[2*j:2*j+2, :]
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -99,8 +104,11 @@ def validate(module, iterator, epoch, args):
 
             acc_iter = 0
             acc_iter_num = 0
+    # print(category_accuracy)
     print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
-    return ave_acc.average()
+    acc = category_acc(category_accuracy, args)
+    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
+    return [ave_acc.average(), acc]
 
 
 def checkpoint(nets, args, epoch_num):
@@ -156,7 +164,7 @@ def main(args):
     accuracy = []
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
-        accuracy.append(validate(network, iterator_val, epoch, args))
+        accuracy.append(validate(network, iterator_val, epoch, args)[1])
         checkpoint(network, args, epoch)
 
     print(np.max(np.array(accuracy)))
@@ -172,15 +180,15 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3)
-    parser.add_argument('--crop_width', default=3)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
     parser.add_argument('--range_of_compute', default=5, type=int)
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/test_feat/img_train_feat.h5')
+                        default='./data/test_feat/img_train_feat_1.h5')
     parser.add_argument('--list_val',
-                        default='./data/test_feat/img_val_feat.h5')
+                        default='./data/test_feat/img_val_feat_1.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
@@ -201,7 +209,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_novel_class', default=293, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
