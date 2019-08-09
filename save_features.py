@@ -52,50 +52,50 @@ def save_feature(args):
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
     iterations = 0
+    features = np.zeros((240000, args.feat_dim * args.crop_height * args.crop_width))
+    labels = np.zeros(24000)
+    flag = 0
     while iterations <= args.train_epoch_iters:
         batch_data = next(iter_train)
+        interval = 0
         if iterations % 10 == 0:
             print('{} / {}'.format(iterations, args.train_epoch_iters))
-        if iterations == 0:
-            features, labels = network(batch_data)
-            features = np.array(features.detach().cpu())
-            labels = np.array(labels.cpu())
-        else:
-            feature, label = network(batch_data)
-            feature = np.array(feature.detach().cpu())
-            label = np.array(label.cpu())
-
-            features = np.vstack((features, feature))
-            labels = np.hstack((labels, label))
+        feature, label = network(batch_data)
+        feature = np.array(feature.detach().cpu())
+        label = np.array(label.cpu())
+        interval = feature.shape[0]
+        features[flag:flag+interval, :] = feature
+        labels[flag:flag+interval] = label
+        flag += interval
         iterations += 1
-
-    f = h5py.File('data/test_feat/img_train_feat_1.h5', 'w')
+    features = features[:flag, :]
+    labels = labels[:flag]
+    f = h5py.File('data/test_feat/img_train_feat_base_1', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
 
     iterations = 0
+    features = np.zeros((50000, args.feat_dim * args.crop_height * args.crop_width))
+    labels = np.zeros(50000)
+    flag = 0
     while iterations <= args.val_epoch_iters:
-        batch_data = next(iter_val)
+        batch_data = next(iter_train)
+        interval = 0
         if iterations % 10 == 0:
             print('{} / {}'.format(iterations, args.val_epoch_iters))
-        if iterations == 0:
-            features, labels = network(batch_data)
-            features = np.array(features.detach().cpu())
-            labels = np.array(labels.cpu())
-
-        else:
-            feature, label = network(batch_data)
-            feature = np.array(feature.detach().cpu())
-            label = np.array(label.cpu())
-            anchor = np.array(batch_data[0]['anchors'][0, :label.size, :])
-            scale = np.tile(np.array(batch_data[0]['scales'][:label.size, :]), (label.size, 1))
-
-            features = np.vstack((features, feature))
-            labels = np.hstack((labels, label))
+        feature, label = network(batch_data)
+        feature = np.array(feature.detach().cpu())
+        label = np.array(label.cpu())
+        interval = feature.shape[0]
+        features[flag:flag + interval, :] = feature
+        labels[flag:flag + interval] = label
+        flag += interval
         iterations += 1
 
-    f = h5py.File('data/test_feat/img_val_feat_1.h5', 'w')
+    features = features[:flag, :]
+    labels = labels[:flag]
+    f = h5py.File('data/test_feat/img_val_feat_base_1.h5', 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -115,9 +115,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--data_train',
-                        default='./data/ADE/ADE_Novel/novel_img_train.json')
+                        default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--data_val',
-                        default='./data/ADE/ADE_Novel/novel_img_val.json')
+                        default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--root_dataset',
                         default='../')
 

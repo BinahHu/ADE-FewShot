@@ -129,7 +129,7 @@ class BaseLearningModule(nn.Module):
         loss_supervision = torch.zeros(len(self.args.supervision))
         for i in range(batch_img_num):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
-            if anchor_num == 0 or anchor_num >= 100:
+            if anchor_num == 0 or anchor_num > 100:
                 continue
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
