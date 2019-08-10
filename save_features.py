@@ -51,7 +51,6 @@ def save_feature(args):
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
 
-    """
     iterations = 0
     features = np.zeros((240000, args.feat_dim * args.crop_height * args.crop_width))
     labels = np.zeros(240000)
@@ -69,11 +68,10 @@ def save_feature(args):
         iterations += 1
     features = features[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('data/test_feat/img_train_feat_base_1.h5', 'w')
+    f = h5py.File('data/test_feat/img_train_test_feat_{}.h5'.format(args.id), 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
-    """
 
     iterations = 0
     features = np.zeros((40000, args.feat_dim * args.crop_height * args.crop_width))
@@ -93,7 +91,7 @@ def save_feature(args):
 
     features = features[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('data/test_feat/img_val_feat_base_1.h5', 'w')
+    f = h5py.File('data/test_feat/img_val_test_feat_{}.h5'.format(args.id), 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -108,14 +106,14 @@ if __name__ == '__main__':
                         help="a name for identifying the model")
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1, type=int)
-    parser.add_argument('--crop_width', default=1, type=int)
+    parser.add_argument('--crop_height', default=3, type=int)
+    parser.add_argument('--crop_width', default=3, type=int)
 
     # Path related arguments
     parser.add_argument('--data_train',
-                        default='./data/ADE/ADE_Base/base_img_train.json')
+                        default='./data/ADE/ADE_Novel/novel_img_test_train.json')
     parser.add_argument('--data_val',
-                        default='./data/ADE/ADE_Base/base_img_val.json')
+                        default='./data/ADE/ADE_Novel/novel_img_test_val.json')
     parser.add_argument('--root_dataset',
                         default='../')
 

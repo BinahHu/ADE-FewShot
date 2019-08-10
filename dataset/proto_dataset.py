@@ -190,6 +190,8 @@ class NovelProtoDataset(Dataset):
         self.labels = np.array(f['labels'])
         self.num_sample = self.labels.size
 
+        print('This dataset has {} samples'.format(self.num_sample))
+
         self.data = [dict() for i in range(self.num_sample)]
         for i in range(self.num_sample):
             self.data[i] = {'feature': self.features[i],
