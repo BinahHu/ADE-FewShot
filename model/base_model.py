@@ -69,7 +69,7 @@ class BaseLearningModule(nn.Module):
         labels = None
         for i in range(batch_img_num):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
-            if anchor_num == 0 or anchor_num >= 100:
+            if anchor_num == 0 or anchor_num > 100:
                 continue
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
@@ -81,6 +81,9 @@ class BaseLearningModule(nn.Module):
             else:
                 features = torch.stack((features, feature), dim=0)
                 labels = torch.stack((labels, label), dim=0)
+        if features.shape[0] != labels.shape[0]:
+            print(features.shape[0])
+            print(anchor_num)
         return features, labels
 
     def diagnosis(self, feed_dict):

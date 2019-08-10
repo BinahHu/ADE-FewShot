@@ -116,7 +116,7 @@ def novel_generation(args):
     novel_set_path = os.path.join(origin_path, 'novel_set.json')
     img_path_path = os.path.join(origin_path, 'img_path.json')
     img_path2size_path = os.path.join(origin_path, 'img_path2size.json')
-    novel_list_path = os.path.join(origin_path, 'novel_list.json')
+    novel_list_path = os.path.join(origin_path, 'novel_test_list.json')
     f = open(novel_set_path, 'r')
     novel_set = json.load(f)
     f.close()
@@ -150,6 +150,8 @@ def novel_generation(args):
     all_list = [[] for category in novel_list]
     for obj in novel_set:
         img_index = int(obj["img"])
+        if int(obj["obj"]) not in novel_list:
+            continue
         category = novel_list.index(int(obj["obj"]))
         box = obj["box"]
         annotation = {"img": img_index, "obj": category, "box": box}
@@ -175,11 +177,11 @@ def novel_generation(args):
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
-    output_train = os.path.join(output_path, 'novel_img_train.json')
+    output_train = os.path.join(output_path, 'novel_img_test_train.json')
     f = open(output_train, 'w')
     json.dump(sample_list_train, f)
     f.close()
-    output_val = os.path.join(output_path, 'novel_img_val.json')
+    output_val = os.path.join(output_path, 'novel_img_test_val.json')
     f = open(output_val, 'w')
     json.dump(sample_list_val, f)
     f.close()

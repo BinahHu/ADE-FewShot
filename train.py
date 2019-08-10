@@ -269,7 +269,7 @@ def main(args):
 
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
-                                     lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
+                                     lr=0, momentum=0.5, weight_decay=args.weight_decay)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
     optimizers = [optimizer_feat, optimizer_cls]
@@ -302,8 +302,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=3, type=int)
-    parser.add_argument('--crop_width', default=3, type=int)
+    parser.add_argument('--crop_height', default=1, type=int)
+    parser.add_argument('--crop_width', default=1, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
 
     # data loading arguments
-    parser.add_argument('--supervision', default='supervision.json', type=str)
+    parser.add_argument('--supervision', default='', type=str)
     parser.add_argument('--list_train',
                         default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
@@ -337,7 +337,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
     # warm up

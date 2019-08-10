@@ -14,6 +14,7 @@ from dataset.dataloader import DataLoader, DataLoaderIter
 from utils import AverageMeter, category_acc
 from model.parallel.replicate import patch_replication_callback
 from model.novel_model import NovelClassifier
+import copy
 
 
 def train(module, iterator, optimizers, epoch, args):
@@ -129,8 +130,13 @@ def main(args):
         drop_last=True,
         pin_memory=True
     )
+
+    vargs = copy.deepcopy(args)
+    vargs.gpus = [0, 1, 2, 3]
+    vargs.batch_size_per_gpu = 213
+    vargs.disp_iter = 1
     dataset_val = NovelDataset(
-        args.list_val, args, batch_per_gpu=args.batch_size_per_gpu)
+        args.list_val, args, batch_per_gpu=vargs.batch_size_per_gpu)
     loader_val = DataLoader(
         dataset_val, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,
@@ -141,10 +147,10 @@ def main(args):
 
     args.train_epoch_iters = \
         math.ceil(dataset_train.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
-    args.val_epoch_iters = \
-        math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
+    vargs.val_epoch_iters = \
+        math.ceil(dataset_val.num_sample / (vargs.batch_size_per_gpu * len(vargs.gpus)))
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
-    print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
+    print('1 Val Epoch = {} iters'.format(vargs.val_epoch_iters))
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
@@ -164,7 +170,7 @@ def main(args):
     accuracy = []
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
-        accuracy.append(validate(network, iterator_val, epoch, args)[1])
+        accuracy.append(validate(network, iterator_val, epoch, vargs)[1])
         checkpoint(network, args, epoch)
 
     print(np.max(np.array(accuracy)))
@@ -180,15 +186,15 @@ if __name__ == '__main__':
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1, type=int)
-    parser.add_argument('--crop_width', default=1, type=int)
+    parser.add_argument('--crop_height', default=3, type=int)
+    parser.add_argument('--crop_width', default=3, type=int)
     parser.add_argument('--range_of_compute', default=5, type=int)
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='./data/test_feat/img_train_feat_1.h5')
+                        default='data/test_feat/img_train_feat.h5')
     parser.add_argument('--list_val',
-                        default='./data/test_feat/img_val_feat_1.h5')
+                        default='data/test_feat/img_val_feat.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
@@ -207,7 +213,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_novel_class', default=293, type=int,
+    parser.add_argument('--num_novel_class', default=100, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
