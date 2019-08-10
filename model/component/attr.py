@@ -43,7 +43,7 @@ class AttrClassifier(nn.Module):
         for supervision in args.supervision:
             if supervision['name'] == 'attr':
                 self.num_class = supervision['other']['num_attr']
-        self.mid_layer = nn.Linear(self.in_dim, self.in_dim)
+        # self.mid_layer = nn.Linear(self.in_dim, self.in_dim)
         self.classifier = nn.Linear(self.in_dim, self.num_class)
         self.sigmoid = nn.Sigmoid()
         self.loss = AttrSoftLoss()
@@ -56,7 +56,7 @@ class AttrClassifier(nn.Module):
         """
         x = agg_data['features']
         attributes = agg_data['attr']
-        x = self.mid_layer(x)
+        # x = self.mid_layer(x)
         x = self.classifier(x)
         x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()

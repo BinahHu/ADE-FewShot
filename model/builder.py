@@ -27,11 +27,7 @@ class ModelBuilder:
             backbone = resnet50()
 
         backbone.apply(self.weight_init)
-        if len(self.args.model_weight) > 0:
-            print('Loading weights from {}'.format(self.args.model_weight))
-            backbone.load_state_dict(
-                torch.load(self.args.model_weight,
-                           map_location=lambda storage, loc: storage), strict=False)
+        backbone.load_state_dict(torch.load('tmp_backbone.pth'))
         return backbone
 
     def build_classifier(self):
