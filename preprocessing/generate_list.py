@@ -116,7 +116,7 @@ def novel_generation(args):
     novel_set_path = os.path.join(origin_path, 'novel_set.json')
     img_path_path = os.path.join(origin_path, 'img_path.json')
     img_path2size_path = os.path.join(origin_path, 'img_path2size.json')
-    novel_list_path = os.path.join(origin_path, 'novel_test_list.json')
+    novel_list_path = os.path.join(origin_path, 'novel_val_list.json')
     f = open(novel_set_path, 'r')
     novel_set = json.load(f)
     f.close()
