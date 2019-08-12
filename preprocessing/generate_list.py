@@ -63,7 +63,7 @@ def base_generation(args):
     # get the category information to split train and val
     # add supervision information to instance level
     all_list = [[] for category in base_list]
-    for obj in base_set:
+    for i, obj in enumerate(base_set):
         img_index = int(obj["img"])
         category = base_list.index(int(obj["obj"]))
         box = obj["box"]
@@ -116,7 +116,7 @@ def novel_generation(args):
     novel_set_path = os.path.join(origin_path, 'novel_set.json')
     img_path_path = os.path.join(origin_path, 'img_path.json')
     img_path2size_path = os.path.join(origin_path, 'img_path2size.json')
-    novel_list_path = os.path.join(origin_path, 'novel_test_list.json')
+    novel_list_path = os.path.join(origin_path, 'novel_val_list.json')
     f = open(novel_set_path, 'r')
     novel_set = json.load(f)
     f.close()
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('-root_dataset', default='../data/ADE', help='data file')
     parser.add_argument('-origin_dataset', default='ADE_Origin/', help='origin dir')
     parser.add_argument('--supervision_dataset', default='ADE_Supervision/', help='supervision information')
-    parser.add_argument('-part', default='Novel', help='Base or Novel')
+    parser.add_argument('-part', default='Base', help='Base or Novel')
     parser.add_argument('-shot', default=5, help='shot in Novel')
     parser.add_argument('-img_size', default='img_path2size.json', help='img size file')
     parser.add_argument('--supervision_src', default=json.load(open('./supervision.json', 'r')), type=list)

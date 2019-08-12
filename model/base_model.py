@@ -3,6 +3,8 @@ import torch.nn as nn
 import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
+from model.component.orthogonal import Orthogonal
+from model.component.normalize import Normalize
 
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
@@ -24,6 +26,10 @@ class BaseLearningModule(nn.Module):
         self.crop_width = args.crop_width
         self.roi_align = RoIAlign(args.crop_height, args.crop_width, transform_fpcoor=True)
         self.down_sampling_rate = args.down_sampling_rate
+
+        self.orthogonal = Orthogonal()
+        self.control = nn.L1Loss()
+        self.norm = Normalize()
 
         # supervision modules are generated in train
         # args.module example:
@@ -140,6 +146,9 @@ class BaseLearningModule(nn.Module):
             loss_cls, acc_cls, category_acc_img = self.classifier([feature, labels])
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
+
+            # loss_l1 = self.control(self.norm(feature), torch.zeros(feature.shape[0], feature.shape[1]).cuda())
+            # loss += loss_l1 * labels.shape[0] * 10.0
             acc += acc_cls * labels.shape[0]
             loss_classification += loss_cls.item() * labels.shape[0]
             category_accuracy += category_acc_img.cuda()
@@ -148,6 +157,9 @@ class BaseLearningModule(nn.Module):
                 continue
             if self.mode == 'val':
                 continue
+
+            # loss_ortho = self.orthogonal(feature)
+            # loss += loss_ortho * labels.shape[0]
 
             # form generic data input for all supervision branch
             input_agg = dict()
@@ -158,7 +170,6 @@ class BaseLearningModule(nn.Module):
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)
                     if (supervision is not None) and (supervision['type'] == 'inst'):
                         input_agg[key] = feed_dict[key][i]
-
             # process through each branch
             for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
