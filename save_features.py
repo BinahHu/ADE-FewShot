@@ -102,7 +102,7 @@ def save_feature(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--id', default='baseline',
+    parser.add_argument('--id', default='',
                         help="a name for identifying the model")
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
