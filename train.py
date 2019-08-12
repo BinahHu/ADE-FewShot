@@ -317,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[12, 13, 14], type=list)
+    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
@@ -336,8 +336,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-3, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-3, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
     # warm up
