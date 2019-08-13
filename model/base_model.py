@@ -27,10 +27,6 @@ class BaseLearningModule(nn.Module):
         self.roi_align = RoIAlign(args.crop_height, args.crop_width, transform_fpcoor=True)
         self.down_sampling_rate = args.down_sampling_rate
 
-        self.orthogonal = Orthogonal()
-        self.control = nn.L1Loss()
-        self.norm = Normalize()
-
         # supervision modules are generated in train
         # args.module example:
         # [{'name': 'seg', 'module': seg_module}]
@@ -110,14 +106,23 @@ class BaseLearningModule(nn.Module):
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             label = feed_dict['label'][i][:anchor_num].long()
-            prediction = self.classifier([feature, label])
-
+            # form generic data input for all supervision branch
+            input_agg = dict()
+            input_agg['features'] = feature
+            input_agg['feature_map'] = feature_map[i]
+            for key in feed_dict.keys():
+                if key not in ['img_data']:
+                    input_agg[key] = feed_dict[key][i]
+            # process through each branch
+            for j, supervision in enumerate(self.args.supervision):
+                pred = getattr(self, supervision['name'])(input_agg)
             if predictions is None:
-                predictions = prediction.clone()
+                predictions = pred.clone()
                 labels = label.clone()
             else:
-                predictions = torch.stack((predictions, prediction), dim=0)
+                predictions = torch.stack((predictions, pred), dim=0)
                 labels = torch.stack((labels, label), dim=0)
+
         return predictions, labels
 
     def forward(self, feed_dict):
@@ -147,8 +152,6 @@ class BaseLearningModule(nn.Module):
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
 
-            # loss_l1 = self.control(self.norm(feature), torch.zeros(feature.shape[0], feature.shape[1]).cuda())
-            # loss += loss_l1 * labels.shape[0] * 10.0
             acc += acc_cls * labels.shape[0]
             loss_classification += loss_cls.item() * labels.shape[0]
             category_accuracy += category_acc_img.cuda()
@@ -157,9 +160,6 @@ class BaseLearningModule(nn.Module):
                 continue
             if self.mode == 'val':
                 continue
-
-            # loss_ortho = self.orthogonal(feature)
-            # loss += loss_ortho * labels.shape[0]
 
             # form generic data input for all supervision branch
             input_agg = dict()

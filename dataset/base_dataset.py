@@ -58,6 +58,7 @@ class BaseDataset(BaseProtoDataset):
                 batch_records = self.batch_record_list[1]
                 self.batch_record_list[1] = []
                 break
+
         return batch_records
 
     def __getitem__(self, index):
