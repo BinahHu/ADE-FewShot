@@ -140,7 +140,7 @@ class BaseLearningModule(nn.Module):
         feature_map = self.backbone(feed_dict['img_data'])
         acc = 0
         loss = 0
-        batch_img_num = feature_map.shape[0]
+        batch_img_num = feature_map[0].shape[0]
 
         instance_sum = torch.tensor([0]).cuda()
         loss_classification = torch.zeros(1)
@@ -149,10 +149,13 @@ class BaseLearningModule(nn.Module):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
             if anchor_num == 0 or anchor_num > 100:
                 continue
-            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
+            multi_layer_feature = []
+            for j in range(len(feature_map)):
+                multi_layer_feature.append(feature_map[j][i])
+            feature = self.process_in_roi_layer(multi_layer_feature, feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             labels = feed_dict['label'][i, : anchor_num].long()
-            loss_cls, acc_cls, category_acc_img = self.classifier([feature, labels])
+            loss_cls, acc_cls, category_acc_img = self.classifier([feature[-1], labels])
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
 
@@ -168,7 +171,7 @@ class BaseLearningModule(nn.Module):
             # form generic data input for all supervision branch
             input_agg = dict()
             input_agg['features'] = feature
-            input_agg['feature_map'] = feature_map[i]
+            input_agg['feature_map'] = multi_layer_feature
             for key in feed_dict.keys():
                 if key not in ['img_data']:
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)

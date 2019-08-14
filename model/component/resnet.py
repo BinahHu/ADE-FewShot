@@ -198,15 +198,18 @@ class ResNet(nn.Module):
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        feat1 = self.layer1(x)
+        feat2 = self.layer2(feat1)
+        feat3 = self.layer3(feat2)
+        feat4 = self.layer4(feat3)
 
-        x = self.avgpool(x)
+        feat = self.avgpool(feat4)
         # x = x.reshape(x.size(0), -1)
+        """
+        NOTE: TO DO: add additional layers to make the dimension identical
+        """
 
-        return x
+        return feat
 
 
 def resnet10(pretrained=False, progress=True, **kwargs):
