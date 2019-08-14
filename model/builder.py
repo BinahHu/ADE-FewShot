@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from model.component.classifier import Classifier
-from model.component.resnet import resnet18, resnet50
+from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
 
 
@@ -23,8 +23,10 @@ class ModelBuilder:
     def build_backbone(self):
         if self.args.architecture == 'resnet18':
             backbone = resnet18()
-        elif self.args.architecture == 'resnet50':
-            backbone = resnet50()
+        elif self.args.architecture == 'resnet10':
+            backbone = resnet10()
+        elif self.args.architecture == 'resnet34':
+            backbone = resnet34()
 
         backbone.apply(self.weight_init)
         return backbone

@@ -99,6 +99,7 @@ class BaseLearningModule(nn.Module):
         batch_img_num = feature_map.shape[0]
         predictions = None
         labels = None
+        imgs = None
         for i in range(batch_img_num):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
             if anchor_num == 0 or anchor_num >= 100:
@@ -106,6 +107,7 @@ class BaseLearningModule(nn.Module):
             feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             label = feed_dict['label'][i][:anchor_num].long()
+            img_index = feed_dict['id'].repeat(anchor_num)
             # form generic data input for all supervision branch
             input_agg = dict()
             input_agg['features'] = feature
@@ -119,11 +121,13 @@ class BaseLearningModule(nn.Module):
             if predictions is None:
                 predictions = pred.clone()
                 labels = label.clone()
+                imgs = img_index.clone()
             else:
                 predictions = torch.stack((predictions, pred), dim=0)
                 labels = torch.stack((labels, label), dim=0)
+                imgs = torch.stack((imgs, img_index), dim=0)
 
-        return predictions, labels
+        return predictions, labels, imgs
 
     def forward(self, feed_dict):
         if self.mode == 'feature':

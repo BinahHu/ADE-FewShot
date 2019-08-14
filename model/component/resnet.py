@@ -209,6 +209,17 @@ class ResNet(nn.Module):
         return x
 
 
+def resnet10(pretrained=False, progress=True, **kwargs):
+    r"""ResNet-10 model from
+        `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>'_
+        Args:
+            pretrained (bool): If True, returns a model pre-trained on ImageNet
+            progress (bool): If True, displays a progress bar of the download to stderr
+        """
+    model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
+    return model
+
+
 def resnet18(pretrained=False, progress=True, **kwargs):
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>'_
@@ -220,6 +231,6 @@ def resnet18(pretrained=False, progress=True, **kwargs):
     return model
 
 
-def resnet50(pretrained=False, progress=True, **kwargs):
+def resnet34(pretrained=False, progress=True, **kwargs):
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
     return model

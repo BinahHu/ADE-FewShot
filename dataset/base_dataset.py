@@ -5,6 +5,7 @@ import cv2
 from dataset.transform import Transform
 from dataset.proto_dataset import BaseProtoDataset
 import logging
+import shutil
 
 
 class BaseDataset(BaseProtoDataset):
@@ -127,6 +128,7 @@ class BaseDataset(BaseProtoDataset):
         output['label'] = torch.tensor(batch_labels)
         output['anchors'] = torch.tensor(batch_anchors)
         output['anchor_num'] = torch.tensor(batch_anchor_num)
+        output['id'] = torch.tensor([self.cur_idx - 1])
 
         if self.mode == 'val':
             return output

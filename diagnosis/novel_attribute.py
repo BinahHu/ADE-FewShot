@@ -72,21 +72,25 @@ def instance_attr(args):
         if iterations % 10 == 0:
             print('{} / {}'.format(iterations, args.epoch_iters))
         if iterations == 0:
-            preds, labels = network(batch_data)
+            preds, labels, imgs = network(batch_data)
             preds = np.array(preds.detach().cpu())
             labels = np.array(labels.cpu())
+            imgs = np.array(imgs.cpu())
         else:
-            pred, label = network(batch_data)
+            pred, label, img = network(batch_data)
             pred = np.array(pred.detach().cpu())
             label = np.array(label.cpu())
+            img = np.array(img.cpu())
 
             preds = np.vstack((preds, pred))
             labels = np.hstack((labels, label))
+            imgs = np.hstack((imgs, img))
         iterations += 1
 
     f = h5py.File(args.output, 'w')
     f.create_dataset('preds', data=preds)
     f.create_dataset('labels', data=labels)
+    f.create_dataset('imgs', data=imgs)
     f.close()
 
 
