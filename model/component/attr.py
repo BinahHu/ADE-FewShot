@@ -63,11 +63,12 @@ class AttrClassifier(nn.Module):
         if self.mode == 'diagnosis':
             return self.diagnosis(agg_data)
 
+        loss_sum = 0
         x = agg_data['features']
         attributes = agg_data['attr']
-        # x = self.mid_layer(x)
-        x = self.classifier(x)
-        # x = self.sigmoid(x)
+        feature_num = len(x)
         attributes = attributes[:x.shape[0]].long()
-        loss = self.loss([x, attributes])
-        return loss
+        for j in range(feature_num):
+            pred = self.classifier(x[j])
+            loss_sum += self.loss([pred, attributes])
+        return loss_sum
