@@ -38,7 +38,7 @@ class BaseLearningModule(nn.Module):
         if self.classifier is not None:
             self.classifier.mode = self.mode
 
-    def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
+    def process_in_roi_layer(self, multi_layer_feature_map, scale, anchors, anchor_num):
         """
         process the data in roi_layer and get the feature
         :param feature_map: C * H * W
@@ -59,13 +59,17 @@ class BaseLearningModule(nn.Module):
         anchor_index = np.zeros(anchor_num)
         anchor_index = to_variable(anchor_index).int()
         anchors = to_variable(anchors[:anchor_num, :]).float()
-        feature_map = feature_map.unsqueeze(0)
-        feature = self.roi_align(feature_map, anchors, anchor_index)
-        feature = feature.view(-1, self.args.feat_dim * self.crop_height * self.crop_width)
-        return feature
+        feat_layer_num = len(multi_layer_feature_map)
+        features = torch.zeros(feat_layer_num, self.args.feat_dim * self.crop_height * self.crop_width).cuda()
+        for j in range(feat_layer_num):
+            feature_map = multi_layer_feature_map[j].unsqueeze(0)
+            feature = self.roi_align(feature_map, anchors, anchor_index)
+            feature = feature.view(-1, self.args.feat_dim * self.crop_height * self.crop_width)
+            features[j] = feature
+        return features
 
     def predict(self, feed_dict):
-        feature_map = self.backbone(feed_dict['img_data'])
+        feature_map = self.backbone(feed_dict['img_data'])[-1]
         batch_img_num = feature_map.shape[0]
         features = None
         labels = None
