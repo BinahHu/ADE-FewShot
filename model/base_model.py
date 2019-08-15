@@ -60,7 +60,8 @@ class BaseLearningModule(nn.Module):
         anchor_index = to_variable(anchor_index).int()
         anchors = to_variable(anchors[:anchor_num, :]).float()
         feat_layer_num = len(multi_layer_feature_map)
-        features = torch.zeros(feat_layer_num, self.args.feat_dim * self.crop_height * self.crop_width).cuda()
+        features = torch.zeros(feat_layer_num, anchor_num,
+                               self.args.feat_dim * self.crop_height * self.crop_width).cuda()
         for j in range(feat_layer_num):
             feature_map = multi_layer_feature_map[j].unsqueeze(0)
             feature = self.roi_align(feature_map, anchors, anchor_index)
