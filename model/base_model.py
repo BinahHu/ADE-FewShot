@@ -78,8 +78,8 @@ class BaseLearningModule(nn.Module):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
             if anchor_num == 0 or anchor_num > 100:
                 continue
-            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
-                                                feed_dict['anchors'][i], anchor_num)
+            feature = self.process_in_roi_layer(feature_map, feed_dict['scales'][i],
+                                                feed_dict['anchors'][i], anchor_num)[-1]
             label = feed_dict['label'][i][:anchor_num].long()
 
             if features is None:
