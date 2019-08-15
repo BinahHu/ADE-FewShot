@@ -67,7 +67,7 @@ class AttrClassifier(nn.Module):
         x = agg_data['features']
         attributes = agg_data['attr']
         feature_num = len(x)
-        attributes = attributes[:x.shape[0]].long()
+        attributes = attributes[:x.shape[1]].long()
         for j in range(feature_num):
             pred = self.classifier(x[j])
             loss_sum += self.loss([pred, attributes])
