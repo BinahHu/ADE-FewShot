@@ -205,7 +205,7 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='resnet10')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
@@ -214,9 +214,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_base_res10.h5')
+                        default='data/test_feat/img_train_feat_res10.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_base_res10.h5')
+                        default='data/test_feat/img_val_feat_res10.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],

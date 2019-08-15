@@ -39,10 +39,13 @@ class Classifier(nn.Module):
     def forward(self, x):
         if self.mode == 'diagnosis':
             return self.diagnosis(x)
-
+        loss = 0
         feature, labels = x
-        pred = self.fc(feature)
-        loss = self.loss(pred, labels)
+        feat_layers = len(feature)
+        pred = None
+        for i in range(feat_layers-1, feat_layers):
+            pred = self.fc(feature[i])
+            loss += self.loss(pred, labels)
         acc, category_accuracy = self._acc(pred, labels)
 
         return loss, acc, category_accuracy

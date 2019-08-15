@@ -151,6 +151,10 @@ class ResNet(nn.Module):
         self.avgpool = nn.AvgPool2d(kernel_size=3, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
+        self.trans1 = nn.Conv2d(64, 512, kernel_size=1, stride=1, padding=0)
+        self.trans2 = nn.Conv2d(128, 512, kernel_size=1, stride=1, padding=0)
+        self.trans3 = nn.Conv2d(256, 512, kernel_size=1, stride=1, padding=0)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -198,15 +202,18 @@ class ResNet(nn.Module):
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        feat1 = self.layer1(x)
+        feat2 = self.layer2(feat1)
+        feat3 = self.layer3(feat2)
+        feat4 = self.layer4(feat3)
 
-        x = self.avgpool(x)
-        # x = x.reshape(x.size(0), -1)
+        feat4 = self.avgpool(feat4)
 
-        return x
+        feat1 = self.avgpool(self.trans1(feat1))
+        feat2 = self.avgpool(self.trans2(feat2))
+        feat3 = self.avgpool(self.trans3(feat3))
+
+        return [feat1, feat2, feat3, feat4]
 
 
 def resnet10(pretrained=False, progress=True, **kwargs):
