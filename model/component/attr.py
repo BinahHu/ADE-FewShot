@@ -66,10 +66,9 @@ class AttrClassifier(nn.Module):
         loss_sum = 0
         x = agg_data['features']
         attributes = agg_data['attr']
-        #print('The shape of the feature is {}'.format(x.shape))
-        feature_num = x.shape[0]
+        feature_num = len(x)
         attributes = attributes[:x.shape[1]].long()
-        for j in range(0, feature_num):
+        for j in range(feature_num):
             pred = self.classifier(x[j])
             #print('The shape of prediction is {}'.format(pred.shape))
             #print('The shape of attribute is {}'.format(attributes.shape))
