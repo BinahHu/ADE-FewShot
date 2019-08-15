@@ -128,7 +128,7 @@ def slide_window_ave(acc_list, window_size=10):
         inst.append(sample[0])
     category = np.array(category)
     inst = np.array(inst)
-    epoch = category.size()
+    epoch = category.size
 
     start_location = 0
     best_shot = -1
