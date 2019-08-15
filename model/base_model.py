@@ -159,7 +159,7 @@ class BaseLearningModule(nn.Module):
             feature = self.process_in_roi_layer(multi_layer_feature, feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
             labels = feed_dict['label'][i, : anchor_num].long()
-            loss_cls, acc_cls, category_acc_img = self.classifier([feature[-1], labels])
+            loss_cls, acc_cls, category_acc_img = self.classifier([feature, labels])
             instance_sum[0] += labels.shape[0]
             loss += loss_cls * labels.shape[0]
 
