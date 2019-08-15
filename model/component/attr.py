@@ -26,7 +26,7 @@ class AttrSoftLoss(nn.Module):
             zeros = (attributes[i, :] == 0).nonzero().cpu().numpy()
             indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.95)), False)
             loss_mask[indices] = 0
-
+            # print(scores[i].shape)
             attr_loss += F.multilabel_soft_margin_loss(scores[i].unsqueeze(0),
                                                        attributes[i].unsqueeze(0), weight=loss_mask)
         attr_loss /= attributes.shape[0]
@@ -66,9 +66,12 @@ class AttrClassifier(nn.Module):
         loss_sum = 0
         x = agg_data['features']
         attributes = agg_data['attr']
-        feature_num = len(x)
-        attributes = attributes[:x.shape[0]].long()
-        for j in range(feature_num):
+        #print('The shape of the feature is {}'.format(x.shape))
+        feature_num = x.shape[0]
+        attributes = attributes[:x.shape[1]].long()
+        for j in range(0, feature_num):
             pred = self.classifier(x[j])
+            #print('The shape of prediction is {}'.format(pred.shape))
+            #print('The shape of attribute is {}'.format(attributes.shape))
             loss_sum += self.loss([pred, attributes])
         return loss_sum

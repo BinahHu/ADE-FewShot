@@ -185,9 +185,9 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
-        for optimizer in optimizers[:]:
+        for optimizer in optimizers[2:]:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / 10
+                param_group['lr'] = param_group['lr'] / 100
     return None
 
 
@@ -317,9 +317,9 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[], type=list)
+    parser.add_argument('--drop_point', default=[15], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
