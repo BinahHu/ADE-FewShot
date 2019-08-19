@@ -319,7 +319,7 @@ if __name__ == '__main__':
     parser.add_argument('--root_dataset', default='../')
     parser.add_argument('--drop_point', default=[2, 3, 5], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=4, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
@@ -327,7 +327,7 @@ if __name__ == '__main__':
                         help='maximum input image size of long edge')
 
     # running arguments
-    parser.add_argument('--gpus', default=[0, 1, 2, 3], help='gpus to use, e.g. 0-3 or 0,1,2,3')
+    parser.add_argument('--gpus', default=[0, 1], help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int, help='input batch size')
     parser.add_argument('--num_epoch', default=12, type=int, help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,

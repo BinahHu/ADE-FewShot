@@ -9,7 +9,7 @@ class BinaryMaskPredictor(nn.Module):
         super(BinaryMaskPredictor, self).__init__()
         self.in_dim = args.feat_dim
         self.args = args
-        self.down_sampling_rate = args.sown_sampling_rate
+        self.down_sampling_rate = args.down_sampling_rate
 
         self.fc1 = nn.Conv2d(self.in_dim, 256, kernel_size=3, stride=1, padding=1)
         self.fc2 = nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1)
