@@ -90,7 +90,7 @@ def train(module, iterator, optimizers, epoch, args):
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
                     'acc-iter-train': acc_actual * 100}
             if loss_supervision is not None:
-                message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
+                message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
                 for j in range(len(args.supervision)):
                     message += 'Loss-{}: {:.6f}, '.format(args.supervision[j]['name'],
@@ -300,7 +300,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--architecture', default='resnet18')
+    parser.add_argument('--architecture', default='resnet10')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
@@ -317,9 +317,9 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[2, 3, 5], type=list)
+    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=4, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
@@ -327,7 +327,7 @@ if __name__ == '__main__':
                         help='maximum input image size of long edge')
 
     # running arguments
-    parser.add_argument('--gpus', default=[0, 1], help='gpus to use, e.g. 0-3 or 0,1,2,3')
+    parser.add_argument('--gpus', default=[0, 1, 2, 3], help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=2, type=int, help='input batch size')
     parser.add_argument('--num_epoch', default=12, type=int, help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
