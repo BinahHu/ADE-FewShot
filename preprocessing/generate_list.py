@@ -4,7 +4,7 @@ import argparse
 import os
 import random
 import math
-from preprocessing.addcontext import add_context
+from addcontext import add_context
 
 def base_generation(args):
     origin_path = os.path.join(args.root_dataset, args.origin_dataset)
@@ -185,11 +185,11 @@ def novel_generation(args):
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
-    output_train = os.path.join(output_path, 'novel_img_test_train_context.json')
+    output_train = os.path.join(output_path, 'novel_img_train.json')
     f = open(output_train, 'w')
     json.dump(sample_list_train, f)
     f.close()
-    output_val = os.path.join(output_path, 'novel_img_test_val_context.json')
+    output_val = os.path.join(output_path, 'novel_img_val.json')
     f = open(output_val, 'w')
     json.dump(sample_list_val, f)
     f.close()
