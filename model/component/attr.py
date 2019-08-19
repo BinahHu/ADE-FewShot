@@ -24,11 +24,11 @@ class AttrSoftLoss(nn.Module):
         for i in range(attributes.shape[0]):
             loss_mask = torch.ones(attributes.shape[1]).cuda()
             zeros = (attributes[i, :] == 0).nonzero().cpu().numpy()
-            indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.8)), False)
+            indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.95)), False)
             loss_mask[indices] = 0
 
-            attr_loss += F.multilabel_soft_margin_loss(attributes[i].unsqueeze(0),
-                                                       scores[i].unsqueeze(0), weight=loss_mask)
+            attr_loss += F.multilabel_soft_margin_loss(scores[i].unsqueeze(0),
+                                                       attributes[i].unsqueeze(0), weight=loss_mask)
         attr_loss /= attributes.shape[0]
         return attr_loss
 
@@ -47,6 +47,12 @@ class AttrClassifier(nn.Module):
         self.classifier = nn.Linear(self.in_dim, self.num_class)
         self.sigmoid = nn.Sigmoid()
         self.loss = AttrSoftLoss()
+        self.mode = 'train'
+
+    def diagnosis(self, agg_data):
+        x = agg_data['features']
+        x = self.classifier(x)
+        return x
 
     def forward(self, agg_data):
         """
@@ -54,11 +60,14 @@ class AttrClassifier(nn.Module):
         :param agg_data: refer to ../base_model.py
         :return: loss, acc
         """
+        if self.mode == 'diagnosis':
+            return self.diagnosis(agg_data)
+
         x = agg_data['features']
         attributes = agg_data['attr']
         # x = self.mid_layer(x)
         x = self.classifier(x)
-        x = self.sigmoid(x)
+        # x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()
         loss = self.loss([x, attributes])
         return loss

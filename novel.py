@@ -120,6 +120,29 @@ def checkpoint(nets, args, epoch_num):
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
+def slide_window_ave(acc_list, window_size=10):
+    category = []
+    inst = []
+    for sample in acc_list:
+        category.append(sample[1])
+        inst.append(sample[0])
+    category = np.array(category)
+    inst = np.array(inst)
+    epoch = category.size
+
+    start_location = 0
+    best_shot = -1
+    for i in range(0, epoch - window_size):
+        cur_value = category[i:i+window_size].mean()
+        if cur_value > best_shot:
+            start_location = i
+            best_shot = cur_value
+
+    best_inst = inst[start_location:start_location+window_size].mean()
+    print('Best Category {}'.format(best_shot))
+    print('Best Inst {}'.format(best_inst))
+
+
 def main(args):
     dataset_train = NovelDataset(
         args.list_train, args, batch_per_gpu=args.batch_size_per_gpu)
@@ -170,11 +193,10 @@ def main(args):
     accuracy = []
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
-        accuracy.append(validate(network, iterator_val, epoch, vargs)[1])
+        accuracy.append(validate(network, iterator_val, epoch, vargs))
         checkpoint(network, args, epoch)
 
-    print(np.max(np.array(accuracy)))
-    print(np.argmax(np.array(accuracy)))
+    slide_window_ave(accuracy)
     print('Training Done')
 
 
@@ -192,9 +214,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_finetune_l1.h5')
+                        default='data/test_feat/img_train_feat.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_finetune_l1.h5')
+                        default='data/test_feat/img_val_feat.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],

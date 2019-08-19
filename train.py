@@ -185,7 +185,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
-        for optimizer in optimizers[2:]:
+        for optimizer in optimizers[:]:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
     return None
@@ -302,8 +302,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
-    parser.add_argument('--crop_height', default=1, type=int)
-    parser.add_argument('--crop_width', default=1, type=int)
+    parser.add_argument('--crop_height', default=3, type=int)
+    parser.add_argument('--crop_width', default=3, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
@@ -317,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
+    parser.add_argument('--drop_point', default=[2, 3, 5], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
