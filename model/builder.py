@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.component.classifier import Classifier
+from model.component.classifier import Classifier, CosClassifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
 
@@ -32,7 +32,10 @@ class ModelBuilder:
         return backbone
 
     def build_classifier(self):
-        classifier = Classifier(self.args)
+        if self.args.cls == 'Linear':
+            classifier = Classifier(self.args)
+        elif self.args.cls == 'Cos':
+            classifier = CosClassifier(self.args)
         classifier.apply(self.weight_init)
         return classifier
 

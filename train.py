@@ -185,9 +185,9 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
     if iteration == 0 and epoch in args.drop_point:
-        for optimizer in optimizers[2:]:
+        for optimizer in optimizers:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / 100
+                param_group['lr'] = param_group['lr'] / 10
     return None
 
 
@@ -300,7 +300,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--architecture', default='resnet10')
+    parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
@@ -309,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
     parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
+    parser.add_argument('--cls', default="Linear", type=str, help='classifier type')
 
     # data loading arguments
     parser.add_argument('--supervision', default='supervision.json', type=str)
@@ -317,7 +318,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
+    parser.add_argument('--drop_point', default=[3, 9], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')

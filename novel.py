@@ -13,7 +13,7 @@ from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
 from utils import AverageMeter, category_acc
 from model.parallel.replicate import patch_replication_callback
-from model.novel_model import NovelClassifier
+from model.novel_model import NovelClassifier, NovelCosClassifier
 import copy
 
 
@@ -178,7 +178,10 @@ def main(args):
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
 
-    classifier = NovelClassifier(args)
+    if args.cls == 'novel_cls':
+        classifier = NovelClassifier(args)
+    elif args.cls == 'novel_coscls':
+        classifier = NovelCosClassifier(args)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
     optimizers = [optimizer_cls]
@@ -214,9 +217,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_res10.h5')
+                        default='data/test_feat/img_train_feat_res18-cos-long.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_res10.h5')
+                        default='data/test_feat/img_val_feat_res18-cos-long.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
