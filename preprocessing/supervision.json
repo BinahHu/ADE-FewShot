@@ -1,1 +1,2 @@
-[{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 50, "other":  {"attr_num":  159}}]
+[{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 50, "other":  {"attr_num":  159}},
+  {"name":  "seg", "type":  "img", "path":  "seg.json"}]
