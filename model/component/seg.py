@@ -12,8 +12,8 @@ class BinaryMaskPredictor(nn.Module):
         self.args = args
         self.down_sampling_rate = args.down_sampling_rate
 
-        self.fc1 = nn.Conv2d(self.in_dim, 256, kernel_size=3, stride=1, padding=1)
-        self.fc2 = nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Conv2d(self.in_dim, 1, kernel_size=3, stride=1, padding=1)
+        # self.fc2 = nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1)
 
         self.base_classes = json.load(open('data/ADE/ADE_Origin/base_list.json', 'r'))
 
@@ -56,7 +56,8 @@ class BinaryMaskPredictor(nn.Module):
 
             selected_feature_map = feature_map[:, :, anchor[2]:anchor[3], anchor[0]:anchor[1]]
             # print(selected_feature_map.shape)
-            pred_mask = self.fc2(F.relu(self.fc1(selected_feature_map)))[0]
+            # pred_mask = self.fc2(F.relu(self.fc1(selected_feature_map)))[0]
+            pred_mask = self.fc1(selected_feature_map)[0]
             tgt_mask = mask[:, anchor[2]:anchor[3], anchor[0]:anchor[1]]
             # convert into 0-1 mask
             ones = torch.ones(tgt_mask.shape[0], tgt_mask.shape[1], tgt_mask.shape[2]).cuda()
