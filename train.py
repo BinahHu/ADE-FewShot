@@ -90,7 +90,7 @@ def train(module, iterator, optimizers, epoch, args):
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
                     'acc-iter-train': acc_actual * 100}
             if loss_supervision is not None:
-                message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
+                message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
                 for j in range(len(args.supervision)):
                     message += 'Loss-{}: {:.6f}, '.format(args.supervision[j]['name'],
@@ -317,7 +317,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[2, 3, 5], type=list)
+    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

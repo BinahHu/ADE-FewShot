@@ -50,7 +50,7 @@ def base_generation(args):
         # add image level information
         for j in range(len(supervision_contents)):
             if supervision_contents[j]['type'] == 'img':
-                sample_list_train[i][supervision_contents[j]['name']] = supervision_contents[j]['data']
+                sample_list_train[i][supervision_contents[j]['name']] = supervision_contents[j]['data'][i]
 
     sample_list_val = [dict() for i in range(len(img_path))]
     for i in range(len(img_path)):
@@ -104,6 +104,7 @@ def base_generation(args):
             img_index = all_list[i][j]['img']
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
+    print('Start Dump')
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'base_img_train.json')
     f = open(output_train, 'w')

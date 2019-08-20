@@ -3,6 +3,7 @@ import torch.nn as nn
 from model.component.classifier import Classifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
+from model.component.seg import BinaryMaskPredictor
 
 
 class ModelBuilder:
@@ -40,3 +41,8 @@ class ModelBuilder:
         attr_classifier = AttrClassifier(self.args)
         attr_classifier.apply(self.weight_init)
         return attr_classifier
+
+    def build_seg(self):
+        segment_module = BinaryMaskPredictor(self.args)
+        segment_module.apply(self.weight_init)
+        return segment_module
