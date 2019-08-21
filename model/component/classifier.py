@@ -45,7 +45,7 @@ class Classifier(nn.Module):
         feature, labels = x
         feat_layers = len(feature)
         pred = None
-        for i in range(feat_layers-1, feat_layers):
+        for i in range(feat_layers):
             pred = self.fc(feature[i])
             loss += self.loss(pred, labels)
         acc, category_accuracy = self._acc(pred, labels)

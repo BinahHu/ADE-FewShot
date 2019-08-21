@@ -209,11 +209,11 @@ class ResNet(nn.Module):
 
         feat4 = self.avgpool(feat4)
 
-        feat1 = self.avgpool(self.trans1(feat1))
-        feat2 = self.avgpool(self.trans2(feat2))
-        feat3 = self.avgpool(self.trans3(feat3))
+        #feat1 = self.avgpool(self.trans1(feat1))
+        #feat2 = self.avgpool(self.trans2(feat2))
+        #feat3 = self.avgpool(self.trans3(feat3))
 
-        return [feat1, feat2, feat3, feat4]
+        return [feat4]
 
 
 def resnet10(pretrained=False, progress=True, **kwargs):
