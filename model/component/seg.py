@@ -48,8 +48,8 @@ class BinaryMaskPredictor(nn.Module):
         feature_map = feature_map.unsqueeze(0)
         predicted_map = self.fc1(feature_map)
         predicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]))
-
         mask = mask.unsqueeze(0)
+        anchors = self.compute_anchor_location(anchors, scale, [1, 1])
 
         # enumerate the anchors and compute the loss
         loss = 0
@@ -66,5 +66,4 @@ class BinaryMaskPredictor(nn.Module):
             zeros = torch.zeros(tgt_mask.shape[0], tgt_mask.shape[1], tgt_mask.shape[2]).cuda()
             tgt_mask = torch.where(tgt_mask == self.base_classes[int(label.item())], ones, zeros)
             loss += F.binary_cross_entropy_with_logits(pred_mask, tgt_mask)
-            print(loss)
         return loss / (anchor_num + 1e-10)
