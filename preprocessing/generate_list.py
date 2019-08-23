@@ -6,6 +6,7 @@ import random
 import math
 from addcontext import add_context
 
+
 def base_generation(args):
     origin_path = os.path.join(args.root_dataset, args.origin_dataset)
     supervision_path = os.path.join(args.root_dataset, args.supervision_dataset)
@@ -104,7 +105,6 @@ def base_generation(args):
             img_index = all_list[i][j]['img']
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
-    print('Start Dump')
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'base_img_train.json')
     f = open(output_train, 'w')
@@ -206,7 +206,8 @@ if __name__ == '__main__':
     parser.add_argument('-img_size', default='img_path2size.json', help='img size file')
     parser.add_argument('--supervision_src', default=json.load(open('./supervision.json', 'r')), type=list)
     parser.add_argument('-context', type=bool, default=True)
-    parser.add_argument('-ratio', type=float, default=1.5)
+    parser.add_argument('-ratio', type=float, default=2.7)
+
     # example [{'type': 'img', 'name': 'seg', 'path': '1.json'},
     # {'type': 'inst', 'name': 'attr', 'path': 'attr.json'}]
 
