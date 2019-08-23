@@ -207,6 +207,7 @@ if __name__ == '__main__':
     parser.add_argument('--supervision_src', default=json.load(open('./supervision.json', 'r')), type=list)
     parser.add_argument('-context', type=bool, default=True)
     parser.add_argument('-ratio', type=float, default=2.7)
+
     # example [{'type': 'img', 'name': 'seg', 'path': '1.json'},
     # {'type': 'inst', 'name': 'attr', 'path': 'attr.json'}]
 
