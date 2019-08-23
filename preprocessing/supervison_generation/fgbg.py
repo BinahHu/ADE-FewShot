@@ -41,7 +41,7 @@ def generate_fgbg(args):
         fgbg_map += np.where(np.isin(seg_map, novel_class_list), 130, 0)
 
         fgbg_path = img_path[:-4] + '_fgbg.png'
-        cv2.imwrite(fgbg_path, fgbg_map)
+        cv2.imwrite(os.path.join('../../../' + fgbg_path), fgbg_map)
         fgbg_paths.append(fgbg_path)
 
         if index % 10 == 0:

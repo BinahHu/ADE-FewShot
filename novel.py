@@ -194,7 +194,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         accuracy.append(validate(network, iterator_val, epoch, vargs))
-        checkpoint(network, args, epoch)
+        # checkpoint(network, args, epoch)
 
     slide_window_ave(accuracy)
     print('Training Done')
@@ -214,9 +214,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_seg6.h5')
+                        default='data/test_feat/img_train_feat_seg7.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_seg6.h5')
+                        default='data/test_feat/img_val_feat_seg7.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],

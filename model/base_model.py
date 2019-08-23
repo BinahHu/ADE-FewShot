@@ -3,8 +3,6 @@ import torch.nn as nn
 import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
-from model.component.orthogonal import Orthogonal
-from model.component.normalize import Normalize
 
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
