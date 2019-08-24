@@ -164,7 +164,6 @@ class BaseDataset(BaseProtoDataset):
                     # for the supervision such as segmentation
                     if supervision['content'] == 'map':
                         img = getattr(self.transform, name + '_transform')(this_record[name], supervision['other'])
-                        print(img.shape)
                         img = cv2.resize(img, (batch_resize_width, batch_resize_height),
                                          interpolation=cv2.INTER_NEAREST)
                         if img.ndim == 2 and output[name] is None:

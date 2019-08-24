@@ -13,7 +13,7 @@ class FGBGMaskPredictor(nn.Module):
         self.args = args
         self.down_sampling_rate = args.down_sampling_rate
 
-        self.fc1 = nn.Conv2d(self.in_dim, self.args.num_base_class + 1, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Conv2d(self.in_dim, 1, kernel_size=3, stride=1, padding=1)
         # self.fc2 = nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1)
 
         self.base_classes = json.load(open('data/ADE/ADE_Origin/base_list.json', 'r'))
@@ -44,18 +44,16 @@ class FGBGMaskPredictor(nn.Module):
         :param agg_input: input data
         :return: loss averaged over instances
         """
-        if self.mode == 'diagnosis':
-            self.diagnosis(agg_input)
         feature_map = agg_input['feature_map']
-        mask = agg_input['seg']
+        mask = agg_input['fgbg']
 
         feature_map = feature_map.unsqueeze(0)
         predicted_map = self.fc1(feature_map)
-        predicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]))
+        predicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]))[0]
 
-        ones_map = torch.ones(mask.shape[0], mask.shape[1])
-        zeros_map = torch.zeros(mask.shape[0], mask.sahpe[1])
+        ones_map = torch.ones(mask.shape[0], mask.shape[1]).cuda()
+        zeros_map = torch.zeros(mask.shape[0], mask.shape[1]).cuda()
         tgt_mask = torch.where(mask == 255, ones_map, zeros_map)
-        weight_map = torch.where(0 < mask < 255, zeros_map, ones_map)
+        weight_map = torch.where(mask == 130, zeros_map, ones_map)
         loss = F.binary_cross_entropy_with_logits(predicted_map, tgt_mask.unsqueeze(0), weight=weight_map.unsqueeze(0))
         return loss
