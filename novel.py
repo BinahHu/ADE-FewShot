@@ -194,7 +194,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         accuracy.append(validate(network, iterator_val, epoch, vargs))
-        checkpoint(network, args, epoch)
+        # checkpoint(network, args, epoch)
 
     slide_window_ave(accuracy)
     print('Training Done')
