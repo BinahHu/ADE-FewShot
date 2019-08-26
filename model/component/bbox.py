@@ -19,10 +19,12 @@ class BBoxModule(nn.Module):
         super(BBoxModule, self).__init__()
         self.args = args
         for supervision in args.supervision:
-            if supervision['name'] == 'attr':
+            if supervision['name'] == 'bbox':
                 self.crop_height = int(supervision['other']['pool_size'])
                 self.crop_width = int(supervision['other']['pool_size'])
         self.roi_align = RoIAlign(self.crop_height, self.crop_width, transform_fpcoor=True)
+
+        self.down_sampling_rate = self.args.down_sampling_rate
 
         self.feat_dim = args.feat_dim * self.crop_width * self.crop_height
         self.num_class = args.num_base_class
@@ -35,6 +37,7 @@ class BBoxModule(nn.Module):
         :param scale: anchor_num * 2
         :param anchors: anchor_num * 4
         :param anchor_num: int
+        :param change after processed in the network
         :return: feature C * crop_height * crop_width
         """
         anchors = np.array(anchors.detach().cpu())
@@ -88,10 +91,10 @@ class BBoxModule(nn.Module):
         w_tgt = r_tgt - x_tgt
 
         # compute the value
-        dx = (x_tgt - x_crop) / w_crop
-        dy = (y_crop - y_tgt) / y_crop
-        dw = np.log(w_tgt / w_crop)
-        dh = np.log(h_tgt / h_crop)
+        dx = (x_tgt - x_crop) / (w_crop + 1e-10)
+        dy = (y_crop - y_tgt) / (h_crop + 1e-10)
+        dw = np.log(w_tgt / (w_crop + 1e-10))
+        dh = np.log(h_tgt / (h_crop + 1e-10))
         target_value = np.stack((dx, dy, dw, dh), axis=0)
         # restore the shape
         target_value = np.transpose(target_value)
@@ -103,11 +106,12 @@ class BBoxModule(nn.Module):
         anchor_num = crop_anchors.shape[0]
         tgt_anchors = agg_data['bbox'][:anchor_num, :]
         scale = agg_data['scales']
+
         features = self.process_in_roi_layer(feature_map, scale,
                                             crop_anchors, anchor_num)
 
         target_value = self.prepare_target_value(crop_anchor=crop_anchors, tgt_anchor=tgt_anchors)
-        target_value = torch.tensor(target_value).cuda()
+        target_value = torch.tensor(target_value).float().cuda()
 
         pred_value = self.regress(features)
         loss = F.smooth_l1_loss(pred_value, target_value)

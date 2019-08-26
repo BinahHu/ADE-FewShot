@@ -48,5 +48,5 @@ class Transform:
         img = cv2.imread(path, 0)
         return img
 
-    def bbox_transform(self, bbox):
+    def bbox_transform(self, bbox,other=None):
         return np.array(bbox)
