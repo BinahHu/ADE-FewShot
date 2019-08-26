@@ -19,10 +19,8 @@ class Transform:
         :return: segmentation map in the original size
         """
         path = os.path.join(self.args.root_dataset, path)
-        img = cv2.imread(path)
-        B, G, R = np.transpose(img, (2, 0, 1))
-        seg_map = (G + 256 * (R / 10)).astype(np.int)
-        return seg_map
+        img = cv2.imread(path, 0)
+        return img
 
     def attr_transform(self, tensor, other=None):
         """
