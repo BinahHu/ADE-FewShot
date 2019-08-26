@@ -3,6 +3,7 @@ import torch.nn as nn
 from model.component.classifier import Classifier, CosClassifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
+from model.component.hierarchy import HierarchyClassifier
 
 
 class ModelBuilder:
@@ -43,3 +44,8 @@ class ModelBuilder:
         attr_classifier = AttrClassifier(self.args)
         attr_classifier.apply(self.weight_init)
         return attr_classifier
+
+    def build_hierarchy(self):
+        hierarchy_classifier = HierarchyClassifier(self.args)
+        hierarchy_classifier.apply(self.weight_init)
+        return hierarchy_classifier

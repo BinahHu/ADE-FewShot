@@ -37,3 +37,12 @@ class Transform:
         for i in tensor:
             result[i] = 1
         return result
+
+    def hierarchy_transform(self, tensor, other=None):
+        """
+        hierarchy transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        return np.array(tensor)
