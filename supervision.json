@@ -1,1 +1,1 @@
-[{"name":  "seg", "type":  "img", "content":  "map", "weight":  5.0, "lr":  1e-1, "other":  {}}]
+[{"name":  "seg", "type":  "img", "content":  "map", "weight":  0.5, "lr":  1e-1, "other":  {}}]
