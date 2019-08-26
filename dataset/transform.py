@@ -47,3 +47,6 @@ class Transform:
         path = os.path.join(self.args.root_dataset, path)
         img = cv2.imread(path, 0)
         return img
+
+    def bbox_transform(self, bbox):
+        return np.array(bbox)
