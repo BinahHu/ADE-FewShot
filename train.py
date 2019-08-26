@@ -90,7 +90,7 @@ def train(module, iterator, optimizers, epoch, args):
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
                     'acc-iter-train': acc_actual * 100}
             if loss_supervision is not None:
-                message += 'Loss_Cls: {:.6f}, '.format(ave_loss_cls.average())
+                message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
                 for j in range(len(args.supervision)):
                     message += 'Loss-{}: {:.6f}, '.format(args.supervision[j]['name'],

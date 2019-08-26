@@ -6,6 +6,7 @@ import random
 import math
 from addcontext import add_context
 
+
 def base_generation(args):
     origin_path = os.path.join(args.root_dataset, args.origin_dataset)
     supervision_path = os.path.join(args.root_dataset, args.supervision_dataset)
@@ -50,7 +51,7 @@ def base_generation(args):
         # add image level information
         for j in range(len(supervision_contents)):
             if supervision_contents[j]['type'] == 'img':
-                sample_list_train[i][supervision_contents[j]['name']] = supervision_contents[j]['data']
+                sample_list_train[i][supervision_contents[j]['name']] = supervision_contents[j]['data'][i]
 
     sample_list_val = [dict() for i in range(len(img_path))]
     for i in range(len(img_path)):

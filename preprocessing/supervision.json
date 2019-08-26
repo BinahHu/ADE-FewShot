@@ -1,2 +1,3 @@
 [{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 15, "other":  {"attr_num":  159}},
-{"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}}]
+{"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}},
+{"name":  "seg", "type":  "img", "path":  "seg.json"}, {"name":  "fgbg", "type":  "img", "path":  "fgbg.json"}]
