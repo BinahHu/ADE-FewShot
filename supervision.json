@@ -1,1 +1,1 @@
-[{"name":  "fgbg", "type":  "img", "content":  "map", "weight":  5.0, "lr":  1e-1, "other":  {}}]
+[{"name":  "bbox", "type":  "inst", "content":  "list", "weight":  5.0, "lr":  1e-1, "other":  {"pool_size":  3}}]
