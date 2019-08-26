@@ -4,6 +4,7 @@ from model.component.classifier import Classifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
 from model.component.seg import BinaryMaskPredictor
+from model.component.fgbg import FGBGMaskPredictor
 
 
 class ModelBuilder:
@@ -46,3 +47,8 @@ class ModelBuilder:
         segment_module = BinaryMaskPredictor(self.args)
         segment_module.apply(self.weight_init)
         return segment_module
+
+    def build_fgbg(self):
+        fgbg_module = FGBGMaskPredictor(self.args)
+        fgbg_module.apply(self.weight_init)
+        return fgbg_module
