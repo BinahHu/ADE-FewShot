@@ -1,2 +1,3 @@
 [{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 50, "other":  {"attr_num":  159}},
-  {"name":  "seg", "type":  "img", "path":  "seg.json"}, {"name":  "fgbg", "type":  "img", "path":  "fgbg.json"}]
+  {"name":  "seg", "type": "img", "path":  "seg.json"}, {"name":  "fgbg", "type":  "img", "path":  "fgbg.json"},
+  {"name":  "bbox", "type": "inst", "path":  "bbox.json"}]
