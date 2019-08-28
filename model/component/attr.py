@@ -26,7 +26,7 @@ class AttrSoftLoss(nn.Module):
             zeros = (attributes[i, :] == 0).nonzero().cpu().numpy()
             indices = np.random.choice(zeros.squeeze(), int(round(len(zeros) * 0.95)), False)
             loss_mask[indices] = 0
-
+            # print(scores[i].shape)
             attr_loss += F.multilabel_soft_margin_loss(scores[i].unsqueeze(0),
                                                        attributes[i].unsqueeze(0), weight=loss_mask)
         attr_loss /= attributes.shape[0]
@@ -43,6 +43,8 @@ class AttrClassifier(nn.Module):
         for supervision in args.supervision:
             if supervision['name'] == 'attr':
                 self.num_class = supervision['other']['num_attr']
+                self.orth = supervision['other']['orth']
+                self.weight = supervision['weight']
         # self.mid_layer = nn.Linear(self.in_dim, self.in_dim)
         self.classifier = nn.Linear(self.in_dim, self.num_class)
         self.sigmoid = nn.Sigmoid()
@@ -63,11 +65,24 @@ class AttrClassifier(nn.Module):
         if self.mode == 'diagnosis':
             return self.diagnosis(agg_data)
 
+        loss_sum = 0
         x = agg_data['features']
         attributes = agg_data['attr']
-        # x = self.mid_layer(x)
-        x = self.classifier(x)
-        # x = self.sigmoid(x)
-        attributes = attributes[:x.shape[0]].long()
-        loss = self.loss([x, attributes])
-        return loss
+        feature_num = len(x)
+        attributes = attributes[:x.shape[1]].long()
+        for j in range(feature_num):
+            pred = self.classifier(x[j])
+            loss_sum += self.loss([pred, attributes])
+
+        orth_loss = torch.zeros(1).cuda()
+        if self.orth > 0:
+            for name, param in self.classifier.named_parameters():
+                if 'bias' not in name:
+                    param_flat = param.view(param.shape[0], -1)
+                    sym = torch.mm(param_flat, torch.t(param_flat))
+                    sym -= torch.eye(param_flat.shape[0]).cuda()
+                    orth_loss += sym.sum()
+            orth_loss = orth_loss[0].abs() * self.orth / self.weight
+
+            loss_sum += orth_loss
+        return loss_sum
