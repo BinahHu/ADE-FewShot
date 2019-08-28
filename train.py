@@ -61,7 +61,11 @@ def train(module, iterator, optimizers, epoch, args):
 
         if loss_supervision is not None:
             loss_cls = (loss_cls * instances).sum() / instances.sum().float()
-            loss_supervision = (loss_supervision * instances).sum() / instances.sum().float()
+            loss_supervision_agg = []
+            for sup, supervision in enumerate(args.supervision):
+                loss_supervision_agg.append({"name": supervision["name"],
+                                             "value": (loss_supervision[sup*len(args.gpus):(sup+1)*len(args.gpus)]
+                                                       * instances).sum() / instances.sum().float()})
         # Backward
         loss.backward()
         for optimizer in optimizers:
@@ -78,7 +82,7 @@ def train(module, iterator, optimizers, epoch, args):
             if loss_cls is not None:
                 ave_loss_cls.update(loss_cls.item())
                 for j in range(len(args.supervision)):
-                    ave_supervision_loss[j].update(loss_supervision.item())
+                    ave_supervision_loss[j].update(loss_supervision_agg[j]["value"].item())
 
         if i % args.display_iter == 0:
             message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
