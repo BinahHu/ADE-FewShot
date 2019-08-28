@@ -13,7 +13,7 @@ from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
 from utils import AverageMeter, category_acc
 from model.parallel.replicate import patch_replication_callback
-from model.novel_model import NovelClassifier
+from model.novel_model import NovelClassifier, NovelCosClassifier
 import copy
 
 
@@ -178,7 +178,10 @@ def main(args):
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
 
-    classifier = NovelClassifier(args)
+    if args.cls == 'novel_cls':
+        classifier = NovelClassifier(args)
+    elif args.cls == 'novel_coscls':
+        classifier = NovelCosClassifier(args)
     optimizer_cls = torch.optim.SGD(classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5)
     optimizers = [optimizer_cls]
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
-    parser.add_argument('--arch', default='resnet18')
+    parser.add_argument('--arch', default='resnet10')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
@@ -217,7 +220,7 @@ if __name__ == '__main__':
                         default='data/test_feat/img_train_feat_seg7.h5')
     parser.add_argument('--list_val',
                         default='data/test_feat/img_val_feat_seg7.h5')
-
+    
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')

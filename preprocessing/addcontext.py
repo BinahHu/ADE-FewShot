@@ -38,6 +38,9 @@ def add_context(args, box, shape):
         yratio = random.uniform(1.0, min(Ratio, ythd))
         xratio = Ratio / yratio
 
+    #xratio = 1.76
+    #yratio = 1.54
+
     l, r = enlarge(l, r, W, xratio)
     u, d = enlarge(u, d, H, yratio)
     box = [l, r, u, d]
