@@ -174,7 +174,7 @@ class BaseLearningModule(nn.Module):
             # form generic data input for all supervision branch
             input_agg = dict()
             input_agg['features'] = feature
-            input_agg['feature_map'] = feature_map[i]
+            input_agg['feature_map'] = feature_map[0][i]
             input_agg['anchors'] = feed_dict['anchors'][i][:anchor_num]
             input_agg['scales'] = feed_dict['scales'][i]
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
