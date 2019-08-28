@@ -1,6 +1,1 @@
-<<<<<<< HEAD
-[{"name":  "attr", "type":  "inst", "content":  "list", "weight":  25.0, "lr":  1e-1, "other":  {"num_attr":  159}},
-  {"name":  "seg", "type":  "img", "content":  "map", "weight":  0.5, "lr":  1e-1, "other":  {}}]
-=======
-[{"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 1.0, "lr":  1e-1, "other":  {"layer_width":  [10, 58, 145, 42]}}]
->>>>>>> d38baa01df6a3f34a9e21c90b6e5342131f2ffad
+[{"name":  "bbox", "type":  "inst", "content":  "list", "weight":  5.0, "lr":  1e-1, "other":  {"pool_size":  3}}]
