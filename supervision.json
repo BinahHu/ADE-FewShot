@@ -1,1 +1,1 @@
-[{"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 1.0, "lr":  1e-1, "other":  {"layer_width":  [10, 58, 145, 42]}}]
+[{"name":  "attr", "type": "inst", "path":  "part.json", "weight": 25.0, "lr":  1e-1, "other":  {"num_attr":  113, "orth":  0}}]

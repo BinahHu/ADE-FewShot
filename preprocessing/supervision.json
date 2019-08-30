@@ -1,2 +1,2 @@
-[{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 15, "other":  {"attr_num":  159}},
+[{"name":  "attr", "type": "inst", "path":  "part.json", "weight": 15, "other":  {"attr_num":  113}},
 {"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}}]
