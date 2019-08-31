@@ -217,9 +217,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_hir-3.h5')
+                        default='data/test_feat/img_train_feat_scene0.2.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_hir-3.h5')
+                        default='data/test_feat/img_val_feat_scene0.2.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],

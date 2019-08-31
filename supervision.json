@@ -1,1 +1,1 @@
-[{"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 3.0, "lr":  1e-1, "other":  {"layer_width":  [10, 58, 145, 42]}}]
+[{"name":  "scene", "type": "img", "content": "scene", "path":  "scene.json", "weight": 0.2, "lr":  1e-1, "other":  {"scene_num":  1739, "pool_size": 3 }}]

@@ -3,7 +3,7 @@ import torch.nn as nn
 from model.component.classifier import Classifier, CosClassifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
-from model.component.hierarchy import HierarchyClassifier
+from model.component.scene import SceneClassifier
 from model.component.seg import BinaryMaskPredictor
 from model.component.fgbg import FGBGMaskPredictor
 
@@ -47,10 +47,10 @@ class ModelBuilder:
         attr_classifier.apply(self.weight_init)
         return attr_classifier
 
-    def build_hierarchy(self):
-        hierarchy_classifier = HierarchyClassifier(self.args)
-        hierarchy_classifier.apply(self.weight_init)
-        return hierarchy_classifier
+    def build_scene(self):
+        scene_classifier = SceneClassifier(self.args)
+        scene_classifier.apply(self.weight_init)
+        return scene_classifier
 
     def build_seg(self):
         segment_module = BinaryMaskPredictor(self.args)
