@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import math
 
-from torch.nn.functional import cosine_similarity
-from torch.nn.utils.weight_norm import WeightNorm
 
 class Classifier(nn.Module):
     def __init__(self, args):
@@ -41,13 +40,10 @@ class Classifier(nn.Module):
     def forward(self, x):
         if self.mode == 'diagnosis':
             return self.diagnosis(x)
-        loss = 0
+
         feature, labels = x
-        feat_layers = len(feature)
-        pred = None
-        for i in range(feat_layers):
-            pred = self.fc(feature[i])
-            loss += self.loss(pred, labels)
+        pred = self.fc(feature)
+        loss = self.loss(pred, labels)
         acc, category_accuracy = self._acc(pred, labels)
 
         return loss, acc, category_accuracy
@@ -70,7 +66,6 @@ class CosClassifier(nn.Module):
     def reset_parameters(self):
         stdv = 1. / math.sqrt(self.weight.size(1))
         self.weight.data.uniform_(-stdv, stdv)
-
 
     def _acc(self, pred, label):
         category_accuracy = torch.zeros(2, self.num_class)
@@ -107,7 +102,7 @@ class CosClassifier(nn.Module):
         for i in range(feat_layers-1, feat_layers):
             x = feature[i]
             batch_size = x.size(0)
-            pred = self.t.cuda() * cosine_similarity(
+            pred = self.t.cuda() * F.cosine_similarity(
                 x.unsqueeze(1).expand(batch_size, self.outdim, self.indim),
                 self.weight.unsqueeze(0).expand(batch_size, self.outdim, self.indim).cuda(), 2)
             loss += self.loss(pred, labels)
