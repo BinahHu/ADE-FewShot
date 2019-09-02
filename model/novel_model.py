@@ -65,6 +65,7 @@ class NovelClassifier(nn.Module):
         acc = torch.tensor(acc_sum / (num + 1e-10)).cuda()
         return acc, category_acc
 
+
 class NovelCosClassifier(nn.Module):
     def __init__(self, args):
         super(NovelCosClassifier, self).__init__()

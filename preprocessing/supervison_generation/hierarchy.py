@@ -19,9 +19,6 @@ def generate_hierarchy(args):
     f = open(args.base_list, 'r')
     base_list = json.load(f)
     f.close()
-    f = open(args.layer_width, 'r')
-    layer_width = json.load(f)
-    f.close()
 
     hierarchy_list = []
     for i, sample in enumerate(base_set):

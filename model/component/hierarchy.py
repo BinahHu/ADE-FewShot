@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+
 class HierarchyClassifier(nn.Module):
     def __init__(self, args):
         super(HierarchyClassifier, self).__init__()
@@ -34,19 +35,16 @@ class HierarchyClassifier(nn.Module):
             return self.diagnosis(agg_data)
         loss_sum = 0
         x = agg_data['features']
-        feature_num = len(x)
         hierarchy = agg_data['hierarchy'].long()
-        hierarchy = hierarchy[:x.shape[1]]
+        hierarchy = hierarchy[:x.shape[0]]
 
         # Shallow supervision only
-        for k in range(feature_num-1, feature_num):
-            feature = x[k]
-            losses = []
-            for i in range(len(self.fcs)):
-                fc = self.fcs[i]
-                label = hierarchy[:, i]
-                score = fc(feature)
-                losses.append(self.loss(score, label))
-            for loss in losses:
-                loss_sum += loss
+        losses = []
+        for i in range(len(self.fcs)):
+            fc = self.fcs[i]
+            label = hierarchy[:, i]
+            score = fc(x)
+            losses.append(self.loss(score, label))
+        for loss in losses:
+            loss_sum += loss
         return loss_sum

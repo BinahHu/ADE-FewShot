@@ -1,1 +1,2 @@
-[{"name":  "bbox", "type":  "inst", "content":  "list", "weight":  5.0, "lr":  1e-1, "other":  {"pool_size":  3}}]
+[{"name":  "seg", "type":  "img", "content":  "map", "weight":  0.5, "lr":  1e-1, "other":  {}},
+  {"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 1.0, "lr":  1e-1, "other":  {"layer_width":  [10, 58, 145, 42]}}]
