@@ -59,3 +59,16 @@ class Transform:
 
     def bbox_transform(self, bbox,other=None):
         return np.array(bbox)
+
+    def bkg_transform(self, path, other=None):
+        """
+        segmentation transform
+        :param path: segmentation map path
+        :return: segmentation map in the original size
+        """
+        path = os.path.join(self.args.root_dataset, path)
+        img = cv2.imread(path)
+        p0, p1, p2 = np.transpose(img, (2, 0, 1))
+        bkg = p0 + 256 * p1 + 256 * 256 * p2
+        bkg = (bkg - 999) * (bkg < 999) + 999
+        return bkg.astype('int32')

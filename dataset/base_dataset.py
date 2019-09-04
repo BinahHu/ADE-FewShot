@@ -6,6 +6,7 @@ from dataset.transform import Transform
 from dataset.proto_dataset import BaseProtoDataset
 import logging
 import shutil
+np.random.seed(73)
 
 
 class BaseDataset(BaseProtoDataset):

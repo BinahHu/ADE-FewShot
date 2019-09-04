@@ -7,6 +7,7 @@ from model.component.hierarchy import HierarchyClassifier
 from model.component.seg import BinaryMaskPredictor
 from model.component.fgbg import FGBGMaskPredictor
 from model.component.bbox import BBoxModule
+from model.component.bkg import FullMaskPredictor
 
 
 class ModelBuilder:
@@ -57,6 +58,11 @@ class ModelBuilder:
         segment_module = BinaryMaskPredictor(self.args)
         segment_module.apply(self.weight_init)
         return segment_module
+
+    def build_bkg(self):
+        background_module = FullMaskPredictor(self.args)
+        background_module.apply(self.weight_init)
+        return background_module
 
     def build_fgbg(self):
         fgbg_module = FGBGMaskPredictor(self.args)

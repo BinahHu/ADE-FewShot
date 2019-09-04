@@ -1,2 +1,5 @@
 [{"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 50, "other":  {"attr_num":  159}},
-  {"name":  "seg", "type": "img", "path":  "seg.json"}, {"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}}]
+  {"name":  "seg", "type": "img", "path":  "seg.json"},
+  {"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}},
+  {"name":  "bkg", "type": "img", "path":  "bkg.json"}
+]

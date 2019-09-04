@@ -315,6 +315,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
+    parser.add_argument('--num_all_class', default=1000, type=int, help='number of all classes')
     parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
     parser.add_argument('--cls', default="Linear", type=str, help='classifier type')
@@ -326,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[32, 35], type=list)
+    parser.add_argument('--drop_point', default=[22, 25], type=list)
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
