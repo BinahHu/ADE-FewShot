@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import math
 from torch.nn.functional import cosine_similarity
+import torch.nn.functional as F
 
 
 class NovelClassifier(nn.Module):
@@ -29,11 +30,20 @@ class NovelClassifier(nn.Module):
         pred = self.fc(feature)
         return pred, label
 
+    def probability(self, x):
+        feature = x['feature']
+        label = x['label'].long()
+        pred = self.fc(feature)
+        prob = F.softmax(pred)
+        return prob
+
     def forward(self, x):
         if self.mode == 'val':
             return self.predict(x)
         elif self.mode == 'diagnosis':
             return self.diagnosis(x)
+        elif self.mode == 'prob':
+            return self.probability(x)
 
         feature = x['feature']
         label = x['label'].long()
@@ -64,6 +74,7 @@ class NovelClassifier(nn.Module):
                 category_acc[0, label[i]] += 1
         acc = torch.tensor(acc_sum / (num + 1e-10)).cuda()
         return acc, category_acc
+
 
 class NovelCosClassifier(nn.Module):
     def __init__(self, args):

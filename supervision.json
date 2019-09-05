@@ -1,1 +1,2 @@
-[{"name":  "scene", "type": "img", "content": "scene", "path":  "scene.json", "weight": 0.2, "lr":  1e-1, "other":  {"scene_num":  1739, "pool_size": 3 }}]
+[{"name":  "seg", "type":  "img", "content":  "map", "weight":  0.5, "lr":  1e-1, "other":  {}},
+  {"name":  "scene", "type": "img", "content": "scene", "path":  "scene.json", "weight": 0.2, "lr":  1e-1, "other":  {"scene_num":  1739, "pool_size": 3 }}]
