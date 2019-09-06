@@ -19,7 +19,7 @@ from model.parallel.replicate import patch_replication_callback
 
 from loss.focal import FocalLoss
 from loss.Generic import GenericLoss
-
+from utils import selective_load_weights
 from logger import Logger
 
 
@@ -142,7 +142,7 @@ def checkpoint(nets, history, args, epoch_num):
 
     torch.save(history,
                '{}/history_{}'.format(args.ckpt, suffix_latest))
-    torch.save(nets.state_dict(),
+    torch.save(nets.module.state_dict(),
                '{}/net_{}'.format(args.ckpt, suffix_latest))
 
 
@@ -157,7 +157,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if (epoch == 2 or epoch == 8 or epoch == 15) and iteration == 0:
+    if (epoch == 4 or epoch == 8 or epoch == 12) and iteration == 0:
         for optimizer in optimizers:
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] / 10
@@ -166,8 +166,6 @@ def train_adjust_lr(optimizers, epoch, iteration, args):
 
 def main(args):
     # Network Builders
-    if args.mask:
-        args.num_class = 108
     builder = ModelBuilder()
     feature_extractor = builder.build_feature_extractor(arch=args.arch, weights=args.weight_init)
     classifier = builder.build_classification_layer(args)
@@ -186,20 +184,7 @@ def main(args):
     else:
         crit_cls = nn.CrossEntropyLoss(ignore_index=-1)
 
-    if args.loss == "Attr":
-        crit_attr = GenericLoss(args.feat_dim, args.is_soft, num_attr=args.num_attr)
-        weirght_attr = args.attr_weight
-    else:
-        crit_attr = None
-        weirght_attr = 0
-
-    weight_orth = args.orth_weight
-    crit_orth = None
-    crit_seg = nn.NLLLoss(ignore_index=-1)
-    crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1},
-            {'type': 'seg', 'crit': crit_seg, 'weight': 0},
-            {'type': 'attr', 'crit': crit_attr, 'weight': weirght_attr},
-            {'type': 'orth', 'crit': crit_orth, 'weight': weight_orth}]
+    crit = [{'type': 'cls', 'crit': crit_cls, 'weight': 1}]
 
     if args.mask:
         args.list_train = args.list_train[:-5] + "_mask" + args.list_train[-5:]
@@ -242,9 +227,9 @@ def main(args):
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     if args.weight_init != '':
-        network.load_state_dict(
-            torch.load(args.weight_init))
-
+        selective_load_weights(network, args.weight_init)
+    torch.save(network.module.feature_extractor.state_dict(), 'ckpt/inst/net_epoch_20.pth')
+    exit(0)
     network.cuda()
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
@@ -256,8 +241,6 @@ def main(args):
     optimizers = [optimizer_feat, optimizer_cls, optimizer_embd]
     history = {'train': {'epoch': [], 'loss': [], 'acc': []}, 'val': {'epoch': [], 'acc': []}}
 
-
-
     if args.log != '':
         network.load_state_dict(
             torch.load('{}/net_epoch_{}.pth'.format(args.ckpt, args.log)))
@@ -268,7 +251,7 @@ def main(args):
     args.iswarmup = False
 
     # warm up
-    if args.log == '' and args.start_epoch  == 0:
+    if args.log == '' and args.start_epoch == 0 and args.weight_init == '':
         print('Start Warm Up')
         args.iswarmup = True
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
@@ -325,7 +308,7 @@ if __name__ == '__main__':
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')
     parser.add_argument('--batch_size_per_gpu', default=64, type=int,
                         help='input batch size')
-    parser.add_argument('--num_epoch', default=40, type=int,
+    parser.add_argument('--num_epoch', default=20, type=int,
                         help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
@@ -333,20 +316,20 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1.0 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1.0 * 1e-2, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
-    parser.add_argument('--weight_init', default='')
+    parser.add_argument('--weight_init', default='../models/imgnet_18.pth')
 
     # Warm up
     parser.add_argument('--warm_up_epoch', type=int, default=1)
-    parser.add_argument('--warm_up_factor', default=0.001)
+    parser.add_argument('--warm_up_factor', default=0.0001)
     parser.add_argument('--warm_up_iters', default=100)
 
     # Data related arguments
     parser.add_argument('--num_class', default=189, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=32, type=int,
+    parser.add_argument('--workers', default=16, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,

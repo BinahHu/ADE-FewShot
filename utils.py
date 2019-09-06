@@ -3,6 +3,7 @@ import re
 import functools
 import fnmatch
 import numpy as np
+import torch
 
 
 def find_recursive(root_dir, ext='.jpg'):
@@ -181,3 +182,9 @@ def parse_devices(input_devices):
             raise NotSupportedCliException(
                 'Can not recognize device: "{}"'.format(d))
     return ret
+
+
+def selective_load_weights(network, path):
+    print("Load weight from {}".format(path))
+    network.load_state_dict(
+        torch.load(path, map_location=lambda storage, loc: storage), strict=False)
