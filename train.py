@@ -63,9 +63,13 @@ def train(module, iterator, optimizers, epoch, args):
             loss_cls = (loss_cls * instances).sum() / instances.sum().float()
             loss_supervision_agg = []
             for sup, supervision in enumerate(args.supervision):
+                tmp = 0
+                gpu_num = len(args.gpus)
+                for j in range(gpu_num):
+                    tmp += loss_supervision[len(args.supervision) * j + sup] * instances[j]
+                tmp = tmp / instances.sum().float()
                 loss_supervision_agg.append({"name": supervision["name"],
-                                             "value": (loss_supervision[sup*len(args.gpus):(sup+1)*len(args.gpus)]
-                                                       * instances).sum() / instances.sum().float()})
+                                             "value": tmp})
         # Backward
         loss.backward()
         for optimizer in optimizers:
@@ -325,6 +329,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
     parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
+
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

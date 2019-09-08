@@ -172,6 +172,11 @@ class BaseDataset(BaseProtoDataset):
                             output[name] = torch.zeros(self.batch_per_gpu, img.shape[0],
                                                        batch_resize_height, batch_resize_width)
                         output[name][i] = torch.from_numpy(img)
+                    elif supervision['content'] == 'scene':
+                        scene = getattr(self.transform, name + '_transform')(this_record[name], supervision['other'])
+                        if output[name] is None:
+                            output[name] = torch.zeros(self.batch_per_gpu)
+                        output[name][i] = torch.from_numpy(scene)
         return output
 
     def __len__(self):

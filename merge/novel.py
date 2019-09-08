@@ -28,7 +28,7 @@ def train(module, iterator, optimizers, epoch, args):
     # main loop
     tic = time.time()
     acc_iter = 0
-    acc_iter_num = 0 
+    acc_iter_num = 0
     for i in range(args.train_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
@@ -38,7 +38,7 @@ def train(module, iterator, optimizers, epoch, args):
         loss = loss.mean()
         acc = acc.mean()
         acc_iter += acc.data.item() * 100
-        acc_iter_num += 1 
+        acc_iter_num += 1
 
         # Backward
         loss.backward()
@@ -88,7 +88,7 @@ def validate(module, iterator, epoch, args):
         category_batch_acc = category_batch_acc.cpu()
         # print(category_batch_acc[:, :10])
         for j in range(len(args.gpus)):
-            category_accuracy += category_batch_acc[2*j:2*j+2, :]
+            category_accuracy += category_batch_acc[2 * j:2 * j + 2, :]
 
         # measure elapsed time
         batch_time.update(time.time() - tic)
@@ -98,7 +98,7 @@ def validate(module, iterator, epoch, args):
 
         if i % args.disp_iter == 0:
             print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                    'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
+                  'Accuracy: {:4.2f}, Acc-Iter: {:4.2f}'
                   .format(epoch, i, args.val_epoch_iters,
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), acc_iter / acc_iter_num))
@@ -133,12 +133,12 @@ def slide_window_ave(acc_list, window_size=10):
     start_location = 0
     best_shot = -1
     for i in range(0, epoch - window_size):
-        cur_value = category[i:i+window_size].mean()
+        cur_value = category[i:i + window_size].mean()
         if cur_value > best_shot:
             start_location = i
             best_shot = cur_value
 
-    best_inst = inst[start_location:start_location+window_size].mean()
+    best_inst = inst[start_location:start_location + window_size].mean()
     print('Best Category {}'.format(best_shot))
     print('Best Inst {}'.format(best_inst))
 
@@ -217,9 +217,10 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_srg_attr6.h5')
+                        default='data/test_feat/img_train_feat_seg7.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_srg_attr6.h5')
+                        default='data/test_feat/img_val_feat_seg7.h5')
+
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
                         help='gpus to use, e.g. 0-3 or 0,1,2,3')

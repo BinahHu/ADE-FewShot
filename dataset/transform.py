@@ -57,5 +57,21 @@ class Transform:
         img = cv2.imread(path, 0)
         return img
 
+
+    def scene_transform(self, tensor, other=None):
+        """
+        hierarchy transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        #if other is None:
+        #    raise Exception('No attribute num for attribute supervision')
+        #scene_num = other['scene_num']
+        #result = np.zeros(scene_num).astype(np.int)
+        #result[tensor] = 1
+        return np.array(tensor)
+
     def bbox_transform(self, bbox,other=None):
         return np.array(bbox)
+
