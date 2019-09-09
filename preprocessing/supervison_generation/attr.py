@@ -32,11 +32,11 @@ def generate_attr(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--attr_file', default='../../data/ADE/ADE_Origin/attr.json')
-    parser.add_argument('--output', default='../../data/ADE/ADE_Supervision/attr.json')
+    parser.add_argument('--attr_file', default='../../data/ADE/ADE_Origin/part.json')
+    parser.add_argument('--output', default='../../data/ADE/ADE_Supervision/part.json')
     parser.add_argument('--base_set', default='../../data/ADE/ADE_Origin/base_set.json')
     parser.add_argument('--base_list', default='../../data/ADE/ADE_Origin/base_list.json')
-    parser.add_argument('--attr_num', default=159)
+    parser.add_argument('--attr_num', default=113)
 
     args = parser.parse_args()
 
