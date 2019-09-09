@@ -37,6 +37,21 @@ class Transform:
             result[i] = 1
         return result
 
+    def part_transform(self, tensor, other=None):
+        """
+        attribute transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        if other is None:
+            raise Exception('No part num for attribute supervision')
+        attr_num = other['num_attr']
+        result = np.zeros(attr_num).astype(np.int)
+        for i in tensor:
+            result[i] = 1
+        return result
+
     def hierarchy_transform(self, tensor, other=None):
         """
         hierarchy transform

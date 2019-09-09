@@ -8,6 +8,7 @@ from model.component.seg import BinaryMaskPredictor
 from model.component.fgbg import FGBGMaskPredictor
 from model.component.bbox import BBoxModule
 from model.component.hierarchy import HierarchyClassifier
+from model.component.part import PartClassifier
 
 
 class ModelBuilder:
@@ -48,6 +49,11 @@ class ModelBuilder:
         attr_classifier = AttrClassifier(self.args)
         attr_classifier.apply(self.weight_init)
         return attr_classifier
+
+    def build_part(self):
+        part_classifier = PartClassifier(self.args)
+        part_classifier.apply(self.weight_init)
+        return part_classifier
 
     def build_scene(self):
         scene_classifier = SceneClassifier(self.args)
