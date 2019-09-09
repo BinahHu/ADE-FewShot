@@ -75,3 +75,12 @@ class Transform:
     def bbox_transform(self, bbox,other=None):
         return np.array(bbox)
 
+    def hierarchy_transform(self, tensor, other=None):
+        """
+        hierarchy transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        return np.array(tensor)
+

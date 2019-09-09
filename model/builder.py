@@ -7,6 +7,7 @@ from model.component.scene import SceneClassifier
 from model.component.seg import BinaryMaskPredictor
 from model.component.fgbg import FGBGMaskPredictor
 from model.component.bbox import BBoxModule
+from model.component.hierarchy import HierarchyClassifier
 
 
 class ModelBuilder:
@@ -67,3 +68,8 @@ class ModelBuilder:
         bbox_module = BBoxModule(self.args)
         bbox_module.apply(self.weight_init)
         return bbox_module
+
+    def build_hierarchy(self):
+        hierarchy_classifier = HierarchyClassifier(self.args)
+        hierarchy_classifier.apply(self.weight_init)
+        return hierarchy_classifier
