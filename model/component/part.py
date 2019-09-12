@@ -41,7 +41,7 @@ class PartClassifier(nn.Module):
         super(PartClassifier, self).__init__()
         self.in_dim = args.feat_dim * args.crop_height * args.crop_width
         for supervision in args.supervision:
-            if supervision['name'] == 'attr':
+            if supervision['name'] == 'part':
                 self.num_class = supervision['other']['num_attr']
         # self.mid_layer = nn.Linear(self.in_dim, self.in_dim)
         self.classifier = nn.Linear(self.in_dim, self.num_class)
