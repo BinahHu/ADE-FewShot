@@ -9,6 +9,9 @@ import h5py
 
 import torch
 import torch.nn as nn
+
+import sys
+sys.path.append('../')
 from dataset.novel_dataset import NovelDataset
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
 from dataset.dataloader import DataLoader, DataLoaderIter
@@ -175,10 +178,10 @@ def main(args):
     labels = np.zeros(40000)
     flag = 0
     network.eval()
-    while iterations < args.val_epoch_iters:
+    while iterations < args.epoch_iters:
         batch_data = next(iterator)
         if iterations % 10 == 0:
-            print('{} / {}'.format(iterations, args.val_epoch_iters))
+            print('{} / {}'.format(iterations, args.epoch_iters))
         pred, label = network(batch_data)
         pred = np.array(pred.detach().cpu())
         label = np.array(label.cpu())
@@ -189,8 +192,8 @@ def main(args):
 
     preds = preds[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('data/img_val_feat_{}.h5'.format(args.id), 'w')
-    f.create_dataset('feature_map', data=preds)
+    f = h5py.File('pred/img_val_pred_{}.h5'.format(args.id), 'w')
+    f.create_dataset('preds', data=preds)
     f.create_dataset('labels', data=labels)
     f.close()
 
@@ -205,6 +208,8 @@ if __name__ == '__main__':
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
     parser.add_argument('--range_of_compute', default=5, type=int)
+    parser.add_argument('--model_weight', default='')
+    parser.add_argument('--epoch', default=-1, type=int)
 
     parser.add_argument('--list_val',
                         default='data/img_val_feat.h5')
@@ -233,5 +238,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     args.list_val = 'data/img_val_feat_{}.h5'.format(args.id)
+    args.model_weight = 'ckpt/net_epoch_{}.pth'.format(args.epoch)
 
     main(args)

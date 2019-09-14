@@ -6,6 +6,9 @@ import json
 import math
 import numpy as np
 
+import sys
+sys.path.append('../')
+
 import torch
 import torch.nn as nn
 from dataset.novel_dataset import NovelDataset
@@ -197,7 +200,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         accuracy.append(validate(network, iterator_val, epoch, vargs))
-        # checkpoint(network, args, epoch)
+        checkpoint(network, args, epoch)
 
     slide_window_ave(accuracy)
     print('Training Done')
@@ -217,9 +220,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_baseline.h5')
+                        default='data/img_train_feat_baseline.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_baseline.h5')
+                        default='data/img_val_feat_baseline.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
@@ -240,7 +243,7 @@ if __name__ == '__main__':
     # Data related arguments
     parser.add_argument('--num_novel_class', default=100, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
