@@ -217,9 +217,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_seg7.h5')
+                        default='data/test_feat/img_train_feat_baseline.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_seg7.h5')
+                        default='data/test_feat/img_val_feat_baseline.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./ckpt/novel_ckpt/',
+    parser.add_argument('--ckpt', default='./ckpt/',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=1,
                         help='frequency to display')

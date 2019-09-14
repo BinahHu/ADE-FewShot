@@ -29,6 +29,8 @@ def save_feature(args):
 
     dataset_train = BaseDataset(args.data_train, args)
     dataset_val = BaseDataset(args.data_val, args)
+    dataset_train.if_shuffled = True
+    dataset_val.if_shuffled = True
     loader_train = DataLoader(
         dataset_train, batch_size=len(args.gpus), shuffle=False,
         collate_fn=user_scattered_collate,

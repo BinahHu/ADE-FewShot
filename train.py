@@ -257,7 +257,7 @@ def main(args):
     network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
     if args.model_weight != '':
         selective_load_weights(network, args.model_weight)
-    torch.save(network.backbone.state_dict(), 'ckpt/18_context_attr/resnet.pth')
+    torch.save(network.backbone.state_dict(), '../models/seg_hierarchy_attr_resnet.pth')
     exit(0)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)

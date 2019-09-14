@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import json
+import math
 
 
 class BinaryMaskPredictor(nn.Module):
@@ -47,4 +48,6 @@ class BinaryMaskPredictor(nn.Module):
         weight[-1] = 0.1
 
         loss = F.cross_entropy(predicted_map, mask.long(), weight=weight)
+        loss = loss * (loss.item() / 3.0)
+
         return loss
