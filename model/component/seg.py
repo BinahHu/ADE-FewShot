@@ -39,7 +39,6 @@ class BinaryMaskPredictor(nn.Module):
         """
         feature_map = agg_input['feature_map']
         mask = agg_input['seg']
-
         feature_map = feature_map.unsqueeze(0)
         predicted_map = self.fc1(feature_map)
         predicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]), mode='nearest')

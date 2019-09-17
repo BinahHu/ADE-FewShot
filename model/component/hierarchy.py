@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+
 class HierarchyClassifier(nn.Module):
     def __init__(self, args):
         super(HierarchyClassifier, self).__init__()
