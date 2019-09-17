@@ -159,7 +159,7 @@ def main(args):
 
     vargs = copy.deepcopy(args)
     vargs.gpus = [0, 1, 2, 3]
-    vargs.batch_size_per_gpu = 213
+    vargs.batch_size_per_gpu = 299
     vargs.disp_iter = 1
     dataset_val = NovelDataset(
         args.list_val, args, batch_per_gpu=vargs.batch_size_per_gpu)
@@ -241,7 +241,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_novel_class', default=100, type=int,
+    parser.add_argument('--num_novel_class', default=193, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
@@ -269,5 +269,7 @@ if __name__ == '__main__':
                         help='add comment to this test')
 
     args = parser.parse_args()
+    args.list_train = 'data/img_test_train_feat_{}.h5'.format(args.id)
+    args.list_val = 'data/img_test_val_feat_{}.h5'.format(args.id)
 
     main(args)

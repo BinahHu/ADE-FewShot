@@ -180,7 +180,7 @@ def main(args):
     network.eval()
     while iterations < args.epoch_iters:
         batch_data = next(iterator)
-        if iterations % 10 == 0:
+        if iterations % 1000 == 0:
             print('{} / {}'.format(iterations, args.epoch_iters))
         pred, label = network(batch_data)
         pred = np.array(pred.detach().cpu())
@@ -192,7 +192,7 @@ def main(args):
 
     preds = preds[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('pred/img_val_pred_{}.h5'.format(args.id), 'w')
+    f = h5py.File('pred/img_test_pred_{}.h5'.format(args.id), 'w')
     f.create_dataset('preds', data=preds)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -210,9 +210,10 @@ if __name__ == '__main__':
     parser.add_argument('--range_of_compute', default=5, type=int)
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--epoch', default=-1, type=int)
+    parser.add_argument('--mode', default='val')
 
     parser.add_argument('--list_val',
-                        default='data/img_val_feat.h5')
+                        default='data/img_test_val_feat.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0],
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     parser.add_argument('--optim', default='SGD', help='optimizer')
 
     # Data related arguments
-    parser.add_argument('--num_novel_class', default=100, type=int,
+    parser.add_argument('--num_novel_class', default=193, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=0, type=int,
                         help='number of data loading workers')
@@ -237,7 +238,7 @@ if __name__ == '__main__':
                         help='frequency to display')
 
     args = parser.parse_args()
-    args.list_val = 'data/img_val_feat_{}.h5'.format(args.id)
+    args.list_val = 'data/img_test_val_feat_{}.h5'.format(args.id)
     args.model_weight = 'ckpt/net_epoch_{}.pth'.format(args.epoch)
 
     main(args)
