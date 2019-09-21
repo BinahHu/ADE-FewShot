@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+
 class HierarchyClassifier(nn.Module):
     def __init__(self, args):
         super(HierarchyClassifier, self).__init__()
@@ -38,12 +39,11 @@ class HierarchyClassifier(nn.Module):
         hierarchy = hierarchy[:x.shape[0]]
 
         # Shallow supervision only
-        feature = x
         losses = []
         for i in range(len(self.fcs)):
             fc = self.fcs[i]
             label = hierarchy[:, i]
-            score = fc(feature)
+            score = fc(x)
             losses.append(self.loss(score, label))
         for loss in losses:
             loss_sum += loss
