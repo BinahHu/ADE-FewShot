@@ -37,6 +37,21 @@ class Transform:
             result[i] = 1
         return result
 
+    def part_transform(self, tensor, other=None):
+        """
+        attribute transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        if other is None:
+            raise Exception('No part num for attribute supervision')
+        attr_num = other['num_attr']
+        result = np.zeros(attr_num).astype(np.int)
+        for i in tensor:
+            result[i] = 1
+        return result
+
     def hierarchy_transform(self, tensor, other=None):
         """
         hierarchy transform
@@ -57,6 +72,21 @@ class Transform:
         img = cv2.imread(path, 0)
         return img
 
+
+    def scene_transform(self, tensor, other=None):
+        """
+        hierarchy transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        #if other is None:
+        #    raise Exception('No attribute num for attribute supervision')
+        #scene_num = other['scene_num']
+        #result = np.zeros(scene_num).astype(np.int)
+        #result[tensor] = 1
+        return np.array(tensor)
+
     def bbox_transform(self, bbox,other=None):
         return np.array(bbox)
 
@@ -72,3 +102,13 @@ class Transform:
         bkg = p0 + 256 * p1 + 256 * 256 * p2
         bkg = (bkg - 999) * (bkg < 999) + 999
         return bkg.astype('int32')
+
+    def hierarchy_transform(self, tensor, other=None):
+        """
+        hierarchy transform
+        :param tensor: input attribute list
+        :param other: other information needed for transformation
+        :return: hot result
+        """
+        return np.array(tensor)
+

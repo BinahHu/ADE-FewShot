@@ -1,4 +1,5 @@
 [
   {"name":  "bkg", "type":  "img", "content":  "map", "weight":  0.5, "lr":  1e-1, "other":  {}},
+  {"name":  "attr", "type":  "inst", "content":  "list", "weight":  25.0, "lr": 1e-1, "other":  {"num_attr":  159}},
   {"name":  "part", "type": "inst", "path":  "part.json", "weight": 25.0, "lr":  1e-1, "other":  {"num_attr":  113}}
 ]
