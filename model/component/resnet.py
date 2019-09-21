@@ -114,7 +114,6 @@ class Bottleneck(nn.Module):
         return out
 
 
-
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
@@ -147,13 +146,8 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1,
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=1,
-                                       dilate=replace_stride_with_dilation[2])
+                                       dilate=replace_stride_with_dilation[2], grow=True)
         self.avgpool = nn.AvgPool2d(kernel_size=3, stride=1)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
-
-        self.trans1 = nn.Conv2d(64, 512, kernel_size=1, stride=1, padding=0)
-        self.trans2 = nn.Conv2d(128, 512, kernel_size=1, stride=1, padding=0)
-        self.trans3 = nn.Conv2d(256, 512, kernel_size=1, stride=1, padding=0)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -172,7 +166,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False, grow=False):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -208,10 +202,6 @@ class ResNet(nn.Module):
         feat4 = self.layer4(feat3)
 
         feat4 = self.avgpool(feat4)
-
-        #feat1 = self.avgpool(self.trans1(feat1))
-        #feat2 = self.avgpool(self.trans2(feat2))
-        #feat3 = self.avgpool(self.trans3(feat3))
 
         return feat4
 

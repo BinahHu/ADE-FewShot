@@ -65,9 +65,9 @@ class AttrClassifier(nn.Module):
 
         x = agg_data['features']
         attributes = agg_data['attr']
-        # x = self.mid_layer(x)
         x = self.classifier(x)
         # x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()
         loss = self.loss([x, attributes])
+        loss = loss * loss.item() / 0.02
         return loss

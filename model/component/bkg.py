@@ -3,17 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import json
-import math
 
 
-class BinaryMaskPredictor(nn.Module):
+class FullMaskPredictor(nn.Module):
     def __init__(self, args):
-        super(BinaryMaskPredictor, self).__init__()
+        super(FullMaskPredictor, self).__init__()
         self.in_dim = args.feat_dim
         self.args = args
         self.down_sampling_rate = args.down_sampling_rate
 
-        self.fc1 = nn.Conv2d(self.in_dim, self.args.num_base_class + 1, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Conv2d(self.in_dim, self.args.num_all_class, kernel_size=3, stride=1, padding=1)
 
         self.base_classes = json.load(open('data/ADE/ADE_Origin/base_list.json', 'r'))
 
@@ -39,15 +38,17 @@ class BinaryMaskPredictor(nn.Module):
         :return: loss averaged over instances
         """
         feature_map = agg_input['feature_map']
-        mask = agg_input['seg']
+        mask = agg_input['bkg']
+
         feature_map = feature_map.unsqueeze(0)
         predicted_map = self.fc1(feature_map)
-        predicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]), mode='nearest')
+        #redicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]), mode='nearest')
         mask = mask.unsqueeze(0)
-        weight = torch.ones(self.args.num_base_class + 1).cuda()
-        weight[-1] = 0.1
+        mask = mask.unsqueeze(0)
+        mask = F.interpolate(mask, size=(predicted_map.shape[2], predicted_map.shape[3]), mode='nearest')
+        mask = mask.squeeze(0)
+        weight = torch.ones(self.args.num_all_class).cuda()
+        weight[self.args.num_base_class:] = 0.1
 
         loss = F.cross_entropy(predicted_map, mask.long(), weight=weight)
-        loss = loss * (loss.item() / 3.0)
-
         return loss

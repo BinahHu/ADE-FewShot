@@ -1,7 +1,8 @@
 [
   {"name":  "attr", "type": "inst", "path":  "attr.json", "weight": 50, "other":  {"attr_num":  159}},
-  {"name":  "scene", "type":  "img", "path":  "scene.json", "other": {"scene_num":  1739}},
   {"name":  "seg", "type": "img", "path":  "seg.json"},
+  {"name":  "scene", "type":  "img", "path":  "scene.json", "other": {"scene_num":  1739}},
   {"name":  "hierarchy", "type": "inst", "path":  "hierarchy.json", "weight": 15, "other":  {}},
-  {"name":  "part", "type": "inst", "path":  "part.json", "weight": 15, "other":  {"attr_num":  113}}
+  {"name":  "bkg", "type": "img", "path":  "bkg.json"},
+  {"name":  "part", "type": "inst", "path":  "part.json", "weight": 25.0, "lr":  1e-1, "other":  {"num_attr":  113}}
 ]

@@ -6,6 +6,9 @@ import json
 import math
 import numpy as np
 
+import sys
+sys.path.append('../')
+
 import torch
 import torch.nn as nn
 from dataset.novel_dataset import NovelDataset
@@ -156,7 +159,7 @@ def main(args):
 
     vargs = copy.deepcopy(args)
     vargs.gpus = [0, 1, 2, 3]
-    vargs.batch_size_per_gpu = 213
+    vargs.batch_size_per_gpu = 299
     vargs.disp_iter = 1
     dataset_val = NovelDataset(
         args.list_val, args, batch_per_gpu=vargs.batch_size_per_gpu)
@@ -197,7 +200,7 @@ def main(args):
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         accuracy.append(validate(network, iterator_val, epoch, vargs))
-        # checkpoint(network, args, epoch)
+        checkpoint(network, args, epoch)
 
     slide_window_ave(accuracy)
     print('Training Done')
@@ -217,9 +220,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--list_train',
-                        default='data/test_feat/img_train_feat_seg7.h5')
+                        default='data/img_train_feat_baseline.h5')
     parser.add_argument('--list_val',
-                        default='data/test_feat/img_val_feat_seg7.h5')
+                        default='data/img_val_feat_baseline.h5')
 
     # optimization related arguments
     parser.add_argument('--gpus', default=[0, 1, 2, 3],
@@ -238,9 +241,9 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_novel_class', default=100, type=int,
+    parser.add_argument('--num_novel_class', default=193, type=int,
                         help='number of classes')
-    parser.add_argument('--workers', default=0, type=int,
+    parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgSize', default=[200, 250],
                         nargs='+', type=int,
@@ -256,7 +259,7 @@ if __name__ == '__main__':
 
     # Misc arguments
     parser.add_argument('--seed', default=304, type=int, help='manual seed')
-    parser.add_argument('--ckpt', default='./ckpt/novel_ckpt/',
+    parser.add_argument('--ckpt', default='./ckpt/',
                         help='folder to output checkpoints')
     parser.add_argument('--disp_iter', type=int, default=1,
                         help='frequency to display')
@@ -266,5 +269,7 @@ if __name__ == '__main__':
                         help='add comment to this test')
 
     args = parser.parse_args()
+    args.list_train = 'data/img_test_train_feat_{}.h5'.format(args.id)
+    args.list_val = 'data/img_test_val_feat_{}.h5'.format(args.id)
 
     main(args)

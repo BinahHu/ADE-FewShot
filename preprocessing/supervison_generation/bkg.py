@@ -1,5 +1,5 @@
 """
-get a file for the segmentation mask
+get a file for the segmentation mask with bkg
 store the path of the segmentation images
 """
 import json
@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 
 
-def generate_seg(args):
+def generate_bkg(args):
     """
     get the img path, replace the tail of file name into mask type
     :param args: argument
@@ -19,7 +19,7 @@ def generate_seg(args):
     img_paths = json.load(f)
     f.close()
 
-    f = open('../../data/ADE/ADE_Origin/base_list.json')
+    f = open('../../data/ADE/ADE_Origin/all_list.json')
     base_list = json.load(f)
     f.close()
 
@@ -36,17 +36,24 @@ def generate_seg(args):
             raise RuntimeError('{} not exists'.format(seg_path_original))
         seg_path = img_path[:-4] + '_seg_base.png'
         seg_paths.append(seg_path)
+
         segmentation = cv2.imread(os.path.join('../../../' + seg_path_original))
         B, G, R = np.transpose(segmentation, (2, 0, 1))
         seg_map = (G + 256 * (R / 10))
+        seg_map_new = np.zeros((seg_map.shape[0], seg_map.shape[1], 3))
         H, W = seg_map.shape
         for h in range(H):
             for w in range(W):
-                if seg_map[h, w] not in base_set:
-                    seg_map[h, w] = 189
-                else:
-                    seg_map[h, w] = base_map[seg_map[h, w]]
-        cv2.imwrite('../../../' + seg_path, seg_map.astype(np.uint8))
+                val = base_map[seg_map[h, w]]
+                p0 = val % 256
+                val = val // 256
+                p1 = val % 256
+                p2 = val // 256
+                seg_map_new[h, w, 0] = p0
+                seg_map_new[h, w, 1] = p1
+                seg_map_new[h, w, 2] = p2
+        cv2.imwrite('../../../' + seg_path, seg_map_new.astype(np.uint8))
+
         if i % 1 == 0:
             print('{} / {}'.format(i, length))
 
@@ -58,7 +65,7 @@ def generate_seg(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--img_path_file', default='../../data/ADE/ADE_Origin/img_path.json')
-    parser.add_argument('--output', default='../../data/ADE/ADE_Supervision/seg.json')
+    parser.add_argument('--output', default='../../data/ADE/ADE_Supervision/bkg.json')
     args = parser.parse_args()
 
-    generate_seg(args)
+    generate_bkg(args)

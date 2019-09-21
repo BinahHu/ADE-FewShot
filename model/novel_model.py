@@ -35,7 +35,7 @@ class NovelClassifier(nn.Module):
         label = x['label'].long()
         pred = self.fc(feature)
         prob = F.softmax(pred)
-        return prob
+        return prob, label
 
     def forward(self, x):
         if self.mode == 'val':
