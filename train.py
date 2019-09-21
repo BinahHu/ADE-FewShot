@@ -315,6 +315,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_weight', default='')
     parser.add_argument('--log', default='', help='load trained checkpoint')
     parser.add_argument('--num_base_class', default=189, type=int, help='number of classes')
+    parser.add_argument('--num_all_class', default=1000, type=int, help='number of all classes')
     parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
     parser.add_argument('--cls', default="Linear", type=str, help='classifier type')

@@ -7,6 +7,9 @@ from model.component.scene import SceneClassifier
 from model.component.seg import BinaryMaskPredictor
 from model.component.fgbg import FGBGMaskPredictor
 from model.component.bbox import BBoxModule
+from model.component.bkg import FullMaskPredictor
+from model.component.hierarchy import HierarchyClassifier
+from model.component.part import PartClassifier
 
 
 class ModelBuilder:
@@ -48,6 +51,11 @@ class ModelBuilder:
         attr_classifier.apply(self.weight_init)
         return attr_classifier
 
+    def build_part(self):
+        part_classifier = PartClassifier(self.args)
+        part_classifier.apply(self.weight_init)
+        return part_classifier
+
     def build_scene(self):
         scene_classifier = SceneClassifier(self.args)
         scene_classifier.apply(self.weight_init)
@@ -58,6 +66,11 @@ class ModelBuilder:
         segment_module.apply(self.weight_init)
         return segment_module
 
+    def build_bkg(self):
+        background_module = FullMaskPredictor(self.args)
+        background_module.apply(self.weight_init)
+        return background_module
+
     def build_fgbg(self):
         fgbg_module = FGBGMaskPredictor(self.args)
         fgbg_module.apply(self.weight_init)
@@ -67,3 +80,8 @@ class ModelBuilder:
         bbox_module = BBoxModule(self.args)
         bbox_module.apply(self.weight_init)
         return bbox_module
+
+    def build_hierarchy(self):
+        hierarchy_classifier = HierarchyClassifier(self.args)
+        hierarchy_classifier.apply(self.weight_init)
+        return hierarchy_classifier

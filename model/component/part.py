@@ -33,15 +33,15 @@ class AttrSoftLoss(nn.Module):
         return attr_loss
 
 
-class AttrClassifier(nn.Module):
+class PartClassifier(nn.Module):
     """
     Linear Classifier
     """
     def __init__(self, args):
-        super(AttrClassifier, self).__init__()
+        super(PartClassifier, self).__init__()
         self.in_dim = args.feat_dim * args.crop_height * args.crop_width
         for supervision in args.supervision:
-            if supervision['name'] == 'attr':
+            if supervision['name'] == 'part':
                 self.num_class = supervision['other']['num_attr']
         # self.mid_layer = nn.Linear(self.in_dim, self.in_dim)
         self.classifier = nn.Linear(self.in_dim, self.num_class)
@@ -64,10 +64,10 @@ class AttrClassifier(nn.Module):
             return self.diagnosis(agg_data)
 
         x = agg_data['features']
-        attributes = agg_data['attr']
+        attributes = agg_data['part']
+        # x = self.mid_layer(x)
         x = self.classifier(x)
         # x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()
         loss = self.loss([x, attributes])
-        loss = loss * loss.item() / 0.02
         return loss
