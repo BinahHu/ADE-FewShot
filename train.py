@@ -96,7 +96,7 @@ def train(module, iterator, optimizers, epoch, args):
                                                                optimizers[1].param_groups[0]['lr'], ave_acc.average(),
                                                                ave_total_loss.average(), acc_actual * 100)
             info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
-                    'acc-iter-train': acc_actual * 100}
+                    'acc-iter-train': acc_actual * 100, 'lr': optimizers[0].param_groups[0]['lr']}
             if loss_supervision is not None:
                 message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
@@ -192,10 +192,12 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    if iteration == 0 and epoch in args.drop_point:
-        for optimizer in optimizers:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / 10
+    current_ratio = (epoch - args.start_epoch) * args.train_epoch_iters + iteration
+    current_ratio = float(current_ratio) / float(args.total_iters)
+    lr = math.cos(math.pi * current_ratio)
+    for optimizer in optimizers:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
     return None
 
 
@@ -239,6 +241,7 @@ def main(args):
         math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
+    setattr(args, 'total_iters', args.train_epoch_iters * (args.num_epoch - args.start_epoch))
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
@@ -287,14 +290,14 @@ def main(args):
             getattr(network.module, supervision['name']).parameters(),
             lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
 
-    if args.start_epoch != 0:
-        times = 0
-        for i in args.drop_point:
-            if args.start_epoch > i:
-                times += 1
-        for optimizer in optimizers:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] / pow(10, times)
+    # if args.start_epoch != 0:
+    #     times = 0
+    #     for i in args.drop_point:
+    #         if args.start_epoch > i:
+    #             times += 1
+    #     for optimizer in optimizers:
+    #         for param_group in optimizer.param_groups:
+    #             param_group['lr'] = param_group['lr'] / pow(10, times)
 
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
@@ -372,4 +375,5 @@ if __name__ == '__main__':
 
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
+
     main(args)
