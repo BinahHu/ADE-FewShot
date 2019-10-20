@@ -194,7 +194,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 def train_adjust_lr(optimizers, epoch, iteration, args):
     current_ratio = (epoch - args.start_epoch) * args.train_epoch_iters + iteration
     current_ratio = float(current_ratio) / float(args.total_iters)
-    lr = math.cos(math.pi * current_ratio)
+    lr = math.cos(math.pi * current_ratio * 0.5)
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
