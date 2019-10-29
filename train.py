@@ -5,6 +5,9 @@ import argparse
 import json
 import math
 import copy
+import warnings
+import traceback
+import signal
 
 import torch
 import torch.nn as nn
@@ -20,6 +23,15 @@ from model.parallel.replicate import patch_replication_callback
 
 from utils import selective_load_weights, category_acc
 from logger import Logger
+
+warnings.filterwarnings('ignore')
+
+
+def sig_handler(signum, frame):
+    exit(3)
+
+
+# signal.signal(signal.SIGSEGV, sig_handler)
 
 
 def train(module, iterator, optimizers, epoch, args):
@@ -194,7 +206,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 def train_adjust_lr(optimizers, epoch, iteration, args):
     current_ratio = (epoch - args.start_epoch) * args.train_epoch_iters + iteration
     current_ratio = float(current_ratio) / float(args.total_iters)
-    lr = math.cos(math.pi * current_ratio * 0.5)
+    lr = math.cos(math.pi * current_ratio * 0.5) * args.lr_feat
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
@@ -290,15 +302,6 @@ def main(args):
             getattr(network.module, supervision['name']).parameters(),
             lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
 
-    # if args.start_epoch != 0:
-    #     times = 0
-    #     for i in args.drop_point:
-    #         if args.start_epoch > i:
-    #             times += 1
-    #     for optimizer in optimizers:
-    #         for param_group in optimizer.param_groups:
-    #             param_group['lr'] = param_group['lr'] / pow(10, times)
-
     for epoch in range(args.start_epoch, args.num_epoch):
         train(network, iterator_train, optimizers, epoch, args)
         validate(network, iterator_val, epoch, args)
@@ -333,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
 
     parser.add_argument('--max_anchor_per_img', default=100)
-    parser.add_argument('--workers', default=8, type=int,
+    parser.add_argument('--workers', default=4, type=int,
                         help='number of data loading workers')
     parser.add_argument('--imgShortSize', default=800, type=int,
                         help='input image size of short edge (int or list)')
@@ -365,6 +368,9 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', default="./log_base/", help='dir to save train and val log')
     parser.add_argument('--comment', default="this_child_may_save_the_world", help='add comment to this train')
 
+    # other
+    parser.add_argument('--soft_temperature', default='1.0')
+
     args = parser.parse_args()
 
     if args.supervision != '':
@@ -376,4 +382,9 @@ if __name__ == '__main__':
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
 
-    main(args)
+    try:
+        main(args)
+    except:
+        print("This is my Fault")
+        traceback.print_exc()
+        exit(0)
