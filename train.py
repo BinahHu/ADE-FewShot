@@ -50,7 +50,7 @@ def train(module, iterator, optimizers, epoch, args):
         if args.isWarmUp is True:
             warm_up_adjust_lr(optimizers, epoch, i, args)
         else:
-            train_adjust_lr_drop(optimizers, epoch, i, args)
+            train_adjust_lr(optimizers, epoch, i, args)
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -390,9 +390,4 @@ if __name__ == '__main__':
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
 
-    try:
-        main(args)
-    except:
-        print("This is my Fault")
-        traceback.print_exc()
-        exit(0)
+    main(args)
