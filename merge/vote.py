@@ -55,7 +55,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--models', default=['baseline'])
+    parser.add_argument('--models', default=['seg_attr_hierarchy_scene'])
     parser.add_argument('-weight', default=[1.0, 1.0, 1.0, 1.0])
     parser.add_argument('--mode', default='val')
     args = parser.parse_args()

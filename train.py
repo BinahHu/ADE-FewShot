@@ -8,6 +8,7 @@ import copy
 import warnings
 import traceback
 import signal
+from copy import deepcopy
 
 import torch
 import torch.nn as nn
@@ -21,17 +22,10 @@ from model.builder import ModelBuilder
 from model.base_model import BaseLearningModule
 from model.parallel.replicate import patch_replication_callback
 
-from utils import selective_load_weights, category_acc
+from utils import selective_load_weights, category_acc, set_fixed_weights
 from logger import Logger
 
 warnings.filterwarnings('ignore')
-
-
-def sig_handler(signum, frame):
-    exit(3)
-
-
-# signal.signal(signal.SIGSEGV, sig_handler)
 
 
 def train(module, iterator, optimizers, epoch, args):
@@ -56,7 +50,7 @@ def train(module, iterator, optimizers, epoch, args):
         if args.isWarmUp is True:
             warm_up_adjust_lr(optimizers, epoch, i, args)
         else:
-            train_adjust_lr(optimizers, epoch, i, args)
+            train_adjust_lr_drop(optimizers, epoch, i, args)
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
@@ -82,6 +76,10 @@ def train(module, iterator, optimizers, epoch, args):
                 tmp = tmp / instances.sum().float()
                 loss_supervision_agg.append({"name": supervision["name"],
                                              "value": tmp})
+
+        # if args.isWarmUp is True and args.model_weight is not '' and i >= 100:
+        #     break
+
         # Backward
         loss.backward()
         for optimizer in optimizers:
@@ -124,6 +122,7 @@ def train(module, iterator, optimizers, epoch, args):
                 dispepoch += 1
             for tag, value in info.items():
                 args.logger.scalar_summary(tag, value, i + dispepoch * args.train_epoch_iters)
+
 
         del loss
         del acc_actual
@@ -213,6 +212,14 @@ def train_adjust_lr(optimizers, epoch, iteration, args):
     return None
 
 
+def train_adjust_lr_drop(optimizers, epoch, iteration, args):
+    if iteration == 0 and epoch in args.drop_point:
+        for optimizer in optimizers:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = param_group['lr'] / 10
+    return None
+
+
 def main(args):
     torch.backends.cudnn.deterministic = True
     # Network Builders
@@ -272,6 +279,7 @@ def main(args):
     network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
     if args.model_weight != '':
         selective_load_weights(network, args.model_weight)
+    # set_fixed_weights(network)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
     network.cuda()
@@ -333,7 +341,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[2, 4, 6], type=list)
+    parser.add_argument('--drop_point', default=[5], type=list)
 
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=4, type=int,

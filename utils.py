@@ -191,6 +191,22 @@ def selective_load_weights(network, path):
         torch.load(path, map_location=lambda storage, loc: storage), strict=False)
 
 
+def set_fixed_weights(network):
+    print("Set fixed weights")
+    final_blocks = len(network.backbone.layer4._modules.keys())
+    if final_blocks == 2:
+        print("No need to fix")
+        return
+
+    for param in network.backbone.parameters():
+        param.requires_grad = False
+    final_blocks = len(network.backbone.layer4._modules.keys())
+    if final_blocks != 2:
+        for param in network.backbone.layer4._modules[str(final_blocks-1)].parameters():
+            param.requires_grad = False
+    print("Fix end")
+
+
 def category_acc(acc_data, args):
     acc = acc_data[0].float() / (acc_data[1].float() + 1e-10)
     return acc.mean()
