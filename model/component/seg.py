@@ -48,6 +48,4 @@ class BinaryMaskPredictor(nn.Module):
         weight[-1] = 0.1
 
         loss = F.cross_entropy(predicted_map, mask.long(), weight=weight)
-        loss = loss * (loss.item() / 3.0)
-
         return loss

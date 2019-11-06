@@ -69,5 +69,4 @@ class AttrClassifier(nn.Module):
         # x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()
         loss = self.loss([x, attributes])
-        loss = loss * loss.item() / 0.02
         return loss
