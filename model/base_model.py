@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
+import random
 
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
@@ -176,8 +177,12 @@ class BaseLearningModule(nn.Module):
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
             # process through each branch
+            # thres = 0.8
+            # gen = random.random()
+
             for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
+                # if gen >= thres:
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()
 

@@ -341,7 +341,7 @@ if __name__ == '__main__':
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
     parser.add_argument('--root_dataset', default='../')
-    parser.add_argument('--drop_point', default=[5], type=list)
+    parser.add_argument('--drop_point', default=[3, 4], type=list)
 
     parser.add_argument('--max_anchor_per_img', default=100)
     parser.add_argument('--workers', default=4, type=int,

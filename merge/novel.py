@@ -144,6 +144,7 @@ def slide_window_ave(acc_list, window_size=10):
     best_inst = inst[start_location:start_location + window_size].mean()
     print('Best Category {}'.format(best_shot))
     print('Best Inst {}'.format(best_inst))
+    print('Best Shot {}'.format(start_location))
 
 
 def main(args):
