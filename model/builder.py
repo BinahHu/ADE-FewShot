@@ -10,6 +10,7 @@ from model.component.bbox import BBoxModule
 from model.component.bkg import FullMaskPredictor
 from model.component.hierarchy import HierarchyClassifier
 from model.component.part import PartClassifier
+from model.component.jigsaw import JigSawClassifier
 
 
 class ModelBuilder:
@@ -85,3 +86,8 @@ class ModelBuilder:
         hierarchy_classifier = HierarchyClassifier(self.args)
         hierarchy_classifier.apply(self.weight_init)
         return hierarchy_classifier
+
+    def build_jigsaw(self):
+        jigsaw_classifier = JigSawClassifier(self.args)
+        JigSawClassifier.apply(self.weight_init)
+        return JigSawClassifier
