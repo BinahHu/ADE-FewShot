@@ -181,7 +181,16 @@ class BaseLearningModule(nn.Module):
             # gen = random.random()
 
             for j, supervision in enumerate(self.args.supervision):
-                loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
+                if supervision['name'] != 'jigsaw':
+                    loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
+                else:
+                    input_jigsaw = feed_dict['jigsaw_img']
+                    _, _, _, height, width = input_jigsaw.shape
+                    jigsaw_label = feed_dict['jigsaw_label']
+                    jigsaw_feature_map = self.backbone(input_jigsaw.view(-1, 3, height, width))
+                    _, C, H, W = jigsaw_feature_map.shape
+                    jigsaw_feature_map = jigsaw_feature_map.reshape(batch_img_num, 9, C, H, W)
+                    loss_branch = getattr(self, 'jigsaw')([jigsaw_feature_map, jigsaw_label])
                 # if gen >= thres:
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()
