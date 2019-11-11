@@ -138,6 +138,9 @@ class BaseProtoDataset(Dataset):
             mean=[102.9801, 115.9465, 122.7717],
             std=[1., 1., 1.])
 
+        if len(args.self_supervision) > 0:
+            self.permutations = np.load('data/ADE/permutations.npy')
+
     def parse_input_list(self, data_file):
         f = open(data_file, 'r')
         old_list_sample = json.load(f)
