@@ -20,10 +20,11 @@ class JigSawClassifier(nn.Module):
         :return: loss
         """
         feature, labels = x
+        batch_img_num, _, channel, _, _ = feature.shape
         pooled_features = []
         for j in range(9):
-            pooled_features.append(self.global_pool(feature[j]))
-        concat_feature = torch.cat(pooled_features, 1)
+            pooled_features.append(self.global_pool(feature[:, j, :, :, :]))
+        concat_feature = torch.cat(pooled_features, 1).view(batch_img_num, -1)
         pred = self.fc(concat_feature)
         loss = self.loss(pred, labels)
 

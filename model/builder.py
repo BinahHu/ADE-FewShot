@@ -89,5 +89,5 @@ class ModelBuilder:
 
     def build_jigsaw(self):
         jigsaw_classifier = JigSawClassifier(self.args)
-        JigSawClassifier.apply(self.weight_init)
-        return JigSawClassifier
+        jigsaw_classifier.apply(self.weight_init)
+        return jigsaw_classifier

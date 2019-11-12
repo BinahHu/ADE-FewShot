@@ -171,14 +171,16 @@ class BaseLearningModule(nn.Module):
             input_agg['anchors'] = feed_dict['anchors'][i][:anchor_num]
             input_agg['scales'] = feed_dict['scales'][i]
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
+
             for key in feed_dict.keys():
-                if key not in ['img_data']:
+                if key not in ['img_data', 'jigsaw_label', 'jigsaw_img']:
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
             # process through each branch
             # thres = 0.8
             # gen = random.random()
+
 
             for j, supervision in enumerate(self.args.supervision):
                 if supervision['name'] != 'jigsaw':

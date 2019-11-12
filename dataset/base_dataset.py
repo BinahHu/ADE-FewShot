@@ -141,10 +141,10 @@ class BaseDataset(BaseProtoDataset):
             if supervision['name'] == 'jigsaw':
                 jigsaw_dict = self.self_supervise_jigsaw_data(batch_records)
                 output = dict(output, **jigsaw_dict)
-
         # add supervision information
         for supervision in self.supervision:
-            output[supervision['name']] = None
+            if supervision['type'] != 'self':
+                output[supervision['name']] = None
 
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
@@ -188,7 +188,7 @@ class BaseDataset(BaseProtoDataset):
     def self_supervise_jigsaw_data(self, batch_records):
         batch_resize_size = np.zeros((self.batch_per_gpu, 2), np.int32)
         batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
-        batch_labels = np.zeros(self.batch_per_gpu)
+        batch_labels = np.zeros(self.batch_per_gpu).astype(np.int)
         this_short_size = 600
 
         for i in range(self.batch_per_gpu):
@@ -236,8 +236,8 @@ class BaseDataset(BaseProtoDataset):
             for j in range(9):
                 batch_images[:, j:(j+1), :, :, :] = patch_list[self.permutations[order][j]]
         output = dict()
-        output['jigsaw_img'] = batch_images
-        output['jigsaw_label'] = batch_labels
+        output['jigsaw_img'] = torch.tensor(batch_images)
+        output['jigsaw_label'] = torch.tensor(batch_labels)
         return output
 
     def __len__(self):
