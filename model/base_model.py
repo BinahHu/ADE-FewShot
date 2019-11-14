@@ -173,7 +173,7 @@ class BaseLearningModule(nn.Module):
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
 
             for key in feed_dict.keys():
-                if key not in ['img_data', 'jigsaw_label', 'jigsaw_img']:
+                if key not in ['img_data', 'patch_label', 'patch_img']:
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
@@ -181,18 +181,17 @@ class BaseLearningModule(nn.Module):
             # thres = 0.8
             # gen = random.random()
 
-
             for j, supervision in enumerate(self.args.supervision):
-                if supervision['name'] != 'jigsaw':
+                if supervision['name'] != 'patch_location':
                     loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 else:
-                    input_jigsaw = feed_dict['jigsaw_img']
-                    _, _, _, height, width = input_jigsaw.shape
-                    jigsaw_label = feed_dict['jigsaw_label']
-                    jigsaw_feature_map = self.backbone(input_jigsaw.view(-1, 3, height, width))
-                    _, C, H, W = jigsaw_feature_map.shape
-                    jigsaw_feature_map = jigsaw_feature_map.reshape(batch_img_num, 9, C, H, W)
-                    loss_branch = getattr(self, 'jigsaw')([jigsaw_feature_map, jigsaw_label])
+                    input_patch_location = feed_dict['patch_location_img']
+                    _, _, _, height, width = input_patch_location.shape
+                    patch_location_label = feed_dict['patch_location_label']
+                    patch_location_feature_map = self.backbone(input_patch_location.view(-1, 3, height, width))
+                    _, C, H, W = patch_location_feature_map.shape
+                    patch_location_feature_map = patch_location_feature_map.reshape(batch_img_num, 2, C, H, W)
+                    loss_branch = getattr(self, 'patch_location')([patch_location_feature_map, patch_location_label])
                 # if gen >= thres:
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()

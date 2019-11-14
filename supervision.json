@@ -1,1 +1,1 @@
-[{"name":  "jigsaw", "type":  "self", "weight":  1, "lr":  1e-1, "other":  {}}]
+[{"name":  "patch_location", "type":  "self", "weight":  1, "lr":  1e-1, "other":  {}}]

@@ -11,6 +11,7 @@ from model.component.bkg import FullMaskPredictor
 from model.component.hierarchy import HierarchyClassifier
 from model.component.part import PartClassifier
 from model.component.jigsaw import JigSawClassifier
+from model.component.patch_location import PatchLocationClassifier
 
 
 class ModelBuilder:
@@ -91,3 +92,8 @@ class ModelBuilder:
         jigsaw_classifier = JigSawClassifier(self.args)
         jigsaw_classifier.apply(self.weight_init)
         return jigsaw_classifier
+
+    def build_patch_location(self):
+        patch_location_classifier = PatchLocationClassifier(self.args)
+        patch_location_classifier.apply(self.weight_init)
+        return patch_location_classifier

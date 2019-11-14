@@ -6,6 +6,7 @@ from dataset.transform import Transform
 from dataset.proto_dataset import BaseProtoDataset
 import logging
 import shutil
+from copy import deepcopy
 np.random.seed(73)
 
 
@@ -138,9 +139,9 @@ class BaseDataset(BaseProtoDataset):
             return output
 
         for supervision in self.supervision:
-            if supervision['name'] == 'jigsaw':
-                jigsaw_dict = self.self_supervise_jigsaw_data(batch_records)
-                output = dict(output, **jigsaw_dict)
+            if supervision['name'] == 'patch_location':
+                patch_location_dict = self.self_supervise_patch_location_data(batch_records)
+                output = dict(output, **patch_location_dict)
         # add supervision information
         for supervision in self.supervision:
             if supervision['type'] != 'self':
@@ -185,7 +186,7 @@ class BaseDataset(BaseProtoDataset):
                         output[name][i] = torch.from_numpy(scene)
         return output
 
-    def self_supervise_jigsaw_data(self, batch_records):
+    def self_supervise_patch_location_data(self, batch_records):
         batch_resize_size = np.zeros((self.batch_per_gpu, 2), np.int32)
         batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
         batch_labels = np.zeros(self.batch_per_gpu).astype(np.int)
@@ -210,7 +211,7 @@ class BaseDataset(BaseProtoDataset):
 
         assert self.padding_constant >= self.down_sampling_rate, \
             'padding constant must be equal or large than segm downsamping rate'
-        batch_images = torch.zeros(self.batch_per_gpu, 9, 3, batch_resize_height // 3, batch_resize_width // 3)
+        batch_images = torch.zeros(self.batch_per_gpu, 2, 3, batch_resize_height // 3, batch_resize_width // 3)
 
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
@@ -224,20 +225,22 @@ class BaseDataset(BaseProtoDataset):
             # image transform
             img = self.img_transform(img)
 
+            label = np.random.randint(0, 8)
             patch_list = []
             len_x = batch_resize_width // 3
             len_y = batch_resize_height // 3
             for xj in range(3):
                 for yj in range(3):
-                    patch_list.append(img[:, yj*len_y:(yj+1)*len_y, xj*len_x:(xj+1)*len_x])
+                    if yj * 3 + xj != 4:
+                        patch_list.append(img[:, yj*len_y:(yj+1)*len_y, xj*len_x:(xj+1)*len_x])
 
-            order = np.random.randint(len(self.permutations))
-            batch_labels[i] = order
-            for j in range(9):
-                batch_images[:, j:(j+1), :, :, :] = patch_list[self.permutations[order][j]]
+            batch_labels[i] = label
+            batch_images[:, 0, :, :, :] = deepcopy(img[:, len_y:2*len_y, len_x:2*len_x])
+            batch_images[:, 1, :, :, :] = deepcopy(patch_list[label])
+
         output = dict()
-        output['jigsaw_img'] = torch.tensor(batch_images)
-        output['jigsaw_label'] = torch.tensor(batch_labels)
+        output['patch_location_img'] = batch_images
+        output['patch_location_label'] = torch.from_numpy(batch_labels.copy())
         return output
 
     def __len__(self):
