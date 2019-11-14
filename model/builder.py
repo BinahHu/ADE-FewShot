@@ -10,6 +10,7 @@ from model.component.bbox import BBoxModule
 from model.component.bkg import FullMaskPredictor
 from model.component.hierarchy import HierarchyClassifier
 from model.component.part import PartClassifier
+from model.component.rotation import RotationClassifier
 
 
 class ModelBuilder:
@@ -85,3 +86,8 @@ class ModelBuilder:
         hierarchy_classifier = HierarchyClassifier(self.args)
         hierarchy_classifier.apply(self.weight_init)
         return hierarchy_classifier
+
+    def build_rotation(self):
+        rotation_classifier = RotationClassifier(self.args)
+        rotation_classifier.apply(self.weight_init)
+        return rotation_classifier

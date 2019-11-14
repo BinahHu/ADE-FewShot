@@ -202,7 +202,6 @@ class ResNet(nn.Module):
         feat4 = self.layer4(feat3)
 
         feat4 = self.avgpool(feat4)
-
         return feat4
 
 

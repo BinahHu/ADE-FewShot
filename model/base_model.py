@@ -181,8 +181,13 @@ class BaseLearningModule(nn.Module):
             # gen = random.random()
 
             for j, supervision in enumerate(self.args.supervision):
-                loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
-                # if gen >= thres:
+                if supervision['name'] != 'rotation':
+                    loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
+                else:
+                    input_img = feed_dict['rotation_img']
+                    input_label = feed_dict['rotation_label']
+                    rotation_feature_map = self.backbone(input_img)
+                    loss_branch = getattr(self, 'rotation')([rotation_feature_map, input_label])
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()
 
