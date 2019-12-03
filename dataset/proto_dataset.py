@@ -139,11 +139,6 @@ class BaseProtoDataset(Dataset):
             mean=[102.9801, 115.9465, 122.7717],
             std=[1., 1., 1.])
 
-        self.colorization_normalize = transforms.Normalize(
-            mean=[73.3318, 73.3318, 73.3318],
-            std=[1., 1., 1.]
-        )
-
     def parse_input_list(self, data_file):
         f = open(data_file, 'r')
         old_list_sample = json.load(f)
@@ -162,15 +157,6 @@ class BaseProtoDataset(Dataset):
         img = img.astype(np.float32)
         img = img.transpose((2, 0, 1))
         img = self.normalize(torch.from_numpy(img.copy()))
-        return img
-
-    def colorization_img_transform(self, img):
-        # image to float
-        img = np.array(cv2.cvtColor(img, cv2.COLOR_BGR2LAB)).astype(np.float)
-        img = img[:, :, 0]
-        img = np.tile(img[np.newaxis, :, :], (1, 1, 3))
-
-        img = self.colorization_normalize(torch.from_numpy(img.copy()))
         return img
 
     # Round x to the nearest multiple of p and x' >= x

@@ -142,6 +142,10 @@ class BaseDataset(BaseProtoDataset):
             if supervision['name'] == 'patch_location':
                 patch_location_dict = self.self_supervise_patch_location_data(batch_records)
                 output = dict(output, **patch_location_dict)
+            elif supervision['name'] == 'rotation':
+                rotation_dict = self.self_supervise_rotation_data(batch_records)
+                output = dict(output, **rotation_dict)
+
         # add supervision information
         for supervision in self.supervision:
             if supervision['type'] != 'self':
@@ -241,6 +245,45 @@ class BaseDataset(BaseProtoDataset):
         output = dict()
         output['patch_location_img'] = batch_images
         output['patch_location_label'] = torch.from_numpy(batch_labels.copy())
+        return output
+
+    def self_supervise_rotation_data(self, batch_records):
+        batch_labels = np.zeros(self.batch_per_gpu).astype(np.int)
+        this_short_size = 600
+        batch_resize_height = this_short_size
+        batch_resize_width = this_short_size
+
+        assert self.padding_constant >= self.down_sampling_rate, \
+            'padding constant must be equal or large than segm downsamping rate'
+        batch_images = torch.zeros(self.batch_per_gpu, 3, batch_resize_height, batch_resize_width)
+
+        for i in range(self.batch_per_gpu):
+            this_record = batch_records[i]
+
+            # load image and label
+            image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            assert (img.ndim == 3)
+            # note that each sample within a mini batch has different scale param
+            img_height, img_width, _ = img.shape
+            if min(img_height, img_width) <= 850:
+                scales = 650.0 / float(min(img_height, img_width)) + 1
+                img = cv2.resize(img, (int(img_width * scales + 1), int(img_height * scales + 1)),
+                                 interpolation=cv2.INTER_CUBIC)
+            # image transform
+            img = self.img_transform(img)
+            y_start = np.random.randint(0, img.shape[1] - this_short_size)
+            x_start = np.random.randint(0, img.shape[2] - this_short_size)
+            img = img[:, y_start:(y_start + this_short_size), x_start:(x_start + this_short_size)]
+
+            rotate = np.random.randint(0, 4)
+            img = np.rot90(img, k=rotate, axes=(1, 2))
+            batch_images[i, :, :, :] = torch.from_numpy(img.copy())
+            batch_labels[i] = rotate
+
+        output = dict()
+        output['rotation_img'] = torch.tensor(batch_images)
+        output['rotation_label'] = torch.tensor(batch_labels)
         return output
 
     def __len__(self):

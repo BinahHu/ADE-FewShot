@@ -12,14 +12,7 @@ except ImportError:
     from urllib.request import urlretrieve
 
 
-__all__ = ['ResNet', 'resnet18', 'resnet50', 'resnet101'] # resnet101 is coming soon!
-
-
-model_urls = {
-    'resnet18': 'http://sceneparsing.csail.mit.edu/model/pretrained_resnet/resnet18-imagenet.pth',
-    'resnet50': 'http://sceneparsing.csail.mit.edu/model/pretrained_resnet/resnet50-imagenet.pth',
-    'resnet101': 'http://sceneparsing.csail.mit.edu/model/pretrained_resnet/resnet101-imagenet.pth'
-}
+__all__ = ['ResNet', 'resnet18'] # resnet101 is coming soon!
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
@@ -202,7 +195,6 @@ class ResNet(nn.Module):
         feat4 = self.layer4(feat3)
 
         feat4 = self.avgpool(feat4)
-
         return feat4
 
 

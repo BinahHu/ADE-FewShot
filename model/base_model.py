@@ -132,7 +132,8 @@ class BaseLearningModule(nn.Module):
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
 
             for key in feed_dict.keys():
-                if key not in ['img_data', 'patch_label', 'patch_img']:
+                if key not in ['img_data', 'patch_location_label', 'patch_location__img',
+                               'rotation_img', 'rotation_label']:
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
@@ -148,6 +149,11 @@ class BaseLearningModule(nn.Module):
                     _, C, H, W = patch_location_feature_map.shape
                     patch_location_feature_map = patch_location_feature_map.reshape(batch_img_num, 2, C, H, W)
                     loss_branch = getattr(self, 'patch_location')([patch_location_feature_map, patch_location_label])
+                elif supervision['name'] == 'rotation':
+                    input_img = feed_dict['rotation_img']
+                    input_label = feed_dict['rotation_label']
+                    rotation_feature_map = self.backbone(input_img)
+                    loss_branch = getattr(self, 'rotation')([rotation_feature_map, input_label])
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()
 
