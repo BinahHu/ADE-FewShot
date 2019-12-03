@@ -1,4 +1,0 @@
-{"fpath_img": "images/1.jpg", "fpath_segm": "seg/1.png", "fpath_odgt": "anchor\\1.odgt", "height": 400, "width": 400}
-{"fpath_img": "images/2.jpg", "fpath_segm": "seg/2.png", "fpath_odgt": "anchor\\2.odgt", "height": 400, "width": 400}
-{"fpath_img": "images/3.jpg", "fpath_segm": "seg/3.png", "fpath_odgt": "anchor\\3.odgt", "height": 400, "width": 400}
-{"fpath_img": "images/4.jpg", "fpath_segm": "seg/4.png", "fpath_odgt": "anchor\\4.odgt", "height": 400, "width": 400}
