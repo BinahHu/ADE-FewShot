@@ -7,8 +7,8 @@ import json
 import os
 import sys
 
-fgd = set(json.load(open('objlist.json')))
-img_paths = json.load(open('img_path.json'))
+fgd = set(json.load(open('stat/objlist.json')))
+img_paths = json.load(open('data/img_path.json'))
 objstat = dict()
 IMGNUM = 22210
 
@@ -99,6 +99,6 @@ if __name__ == '__main__':
     for i in range(IMGNUM):
         res.append(transform_annotation(dir, i))
 
-    json.dump(res, open('result.json', 'w'))
-    json.dump(objstat, open('stat.json', 'w'))
+    json.dump(res, open('data/data_all.json', 'w'))
+    json.dump(objstat, open('stat/occurrence.json', 'w'))
 
