@@ -87,47 +87,6 @@ class BaseLearningModule(nn.Module):
             print(anchor_num)
         return features, labels
 
-    def diagnosis(self, feed_dict):
-        """
-        used only when computing
-        :param feed_dict:
-        :return: prediction and labels
-        """
-        self.classifier.mode = 'diagnosis'
-        feature_map = self.backbone(feed_dict['img_data'])
-        batch_img_num = feature_map.shape[0]
-        predictions = None
-        labels = None
-        imgs = None
-        for i in range(batch_img_num):
-            anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
-            if anchor_num == 0 or anchor_num >= 100:
-                continue
-            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
-                                                feed_dict['anchors'][i], anchor_num)
-            label = feed_dict['label'][i][:anchor_num].long()
-            img_index = feed_dict['id'].repeat(anchor_num)
-            # form generic data input for all supervision branch
-            input_agg = dict()
-            input_agg['features'] = feature
-            input_agg['feature_map'] = feature_map[i]
-            for key in feed_dict.keys():
-                if key not in ['img_data']:
-                    input_agg[key] = feed_dict[key][i]
-            # process through each branch
-            for j, supervision in enumerate(self.args.supervision):
-                pred = getattr(self, supervision['name'])(input_agg)
-            if predictions is None:
-                predictions = pred.clone()
-                labels = label.clone()
-                imgs = img_index.clone()
-            else:
-                predictions = torch.stack((predictions, pred), dim=0)
-                labels = torch.stack((labels, label), dim=0)
-                imgs = torch.stack((imgs, img_index), dim=0)
-
-        return predictions, labels, imgs
-
     def forward(self, feed_dict):
         if self.mode == 'feature':
             return self.predict(feed_dict)
@@ -171,20 +130,26 @@ class BaseLearningModule(nn.Module):
             input_agg['anchors'] = feed_dict['anchors'][i][:anchor_num]
             input_agg['scales'] = feed_dict['scales'][i]
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
+
             for key in feed_dict.keys():
-                if key not in ['img_data']:
+                if key not in ['img_data', 'patch_label', 'patch_img']:
                     supervision = next((x for x in self.args.supervision if x['name'] == key), None)
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
-            # process through each branch
-            thres = 0.5
-            gen = random.random()
 
             for j, supervision in enumerate(self.args.supervision):
-                loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
-                if gen >= thres:
-                    loss += (loss_branch * supervision['weight'])
-                    loss_supervision[j] += loss_branch.item()
+                if supervision['type'] != 'self':
+                    loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
+                elif supervision['name'] == 'patch_location':
+                    input_patch_location = feed_dict['patch_location_img']
+                    _, _, _, height, width = input_patch_location.shape
+                    patch_location_label = feed_dict['patch_location_label']
+                    patch_location_feature_map = self.backbone(input_patch_location.view(-1, 3, height, width))
+                    _, C, H, W = patch_location_feature_map.shape
+                    patch_location_feature_map = patch_location_feature_map.reshape(batch_img_num, 2, C, H, W)
+                    loss_branch = getattr(self, 'patch_location')([patch_location_feature_map, patch_location_label])
+                loss += (loss_branch * supervision['weight'])
+                loss_supervision[j] += loss_branch.item()
 
         if self.mode == 'val':
             return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum

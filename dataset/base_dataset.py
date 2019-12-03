@@ -6,6 +6,7 @@ from dataset.transform import Transform
 from dataset.proto_dataset import BaseProtoDataset
 import logging
 import shutil
+from copy import deepcopy
 np.random.seed(73)
 
 
@@ -137,9 +138,14 @@ class BaseDataset(BaseProtoDataset):
         if not hasattr(self, 'supervision'):
             return output
 
+        for supervision in self.supervision:
+            if supervision['name'] == 'patch_location':
+                patch_location_dict = self.self_supervise_patch_location_data(batch_records)
+                output = dict(output, **patch_location_dict)
         # add supervision information
         for supervision in self.supervision:
-            output[supervision['name']] = None
+            if supervision['type'] != 'self':
+                output[supervision['name']] = None
 
         for i in range(self.batch_per_gpu):
             this_record = batch_records[i]
@@ -178,6 +184,63 @@ class BaseDataset(BaseProtoDataset):
                         if output[name] is None:
                             output[name] = torch.zeros(self.batch_per_gpu)
                         output[name][i] = torch.from_numpy(scene)
+        return output
+
+    def self_supervise_patch_location_data(self, batch_records):
+        batch_resize_size = np.zeros((self.batch_per_gpu, 2), np.int32)
+        batch_scales = np.zeros((self.batch_per_gpu, 2), np.float)
+        batch_labels = np.zeros(self.batch_per_gpu).astype(np.int)
+        this_short_size = 600
+
+        for i in range(self.batch_per_gpu):
+            img_height, img_width = batch_records[i]['height'], batch_records[i]['width']
+            this_scale = min(
+                this_short_size / min(img_height, img_width), self.imgMaxSize / max(img_height, img_width))
+            img_resize_height, img_resize_width = img_height * this_scale, img_width * this_scale
+            batch_resize_size[i, :] = img_resize_height, img_resize_width
+        batch_resize_height = np.max(batch_resize_size[:, 0])
+        batch_resize_width = np.max(batch_resize_size[:, 1])
+
+        # Here we must pad both input image and segmentation map to size h' and w' so that p | h' and p | w'
+        batch_resize_height = int(self.round2nearest_multiple(batch_resize_height, 3))
+        batch_resize_width = int(self.round2nearest_multiple(batch_resize_width, 3))
+
+        for i in range(self.batch_per_gpu):
+            batch_scales[i, 0] = batch_resize_height / batch_records[i]['height']
+            batch_scales[i, 1] = batch_resize_width / batch_records[i]['width']
+
+        assert self.padding_constant >= self.down_sampling_rate, \
+            'padding constant must be equal or large than segm downsamping rate'
+        batch_images = torch.zeros(self.batch_per_gpu, 2, 3, batch_resize_height // 3, batch_resize_width // 3)
+
+        for i in range(self.batch_per_gpu):
+            this_record = batch_records[i]
+
+            # load image and label
+            image_path = os.path.join(self.root_dataset, this_record['fpath_img'])
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            assert (img.ndim == 3)
+            # note that each sample within a mini batch has different scale param
+            img = cv2.resize(img, (batch_resize_width, batch_resize_height), interpolation=cv2.INTER_CUBIC)
+            # image transform
+            img = self.img_transform(img)
+
+            label = np.random.randint(0, 8)
+            patch_list = []
+            len_x = batch_resize_width // 3
+            len_y = batch_resize_height // 3
+            for xj in range(3):
+                for yj in range(3):
+                    if yj * 3 + xj != 4:
+                        patch_list.append(img[:, yj*len_y:(yj+1)*len_y, xj*len_x:(xj+1)*len_x])
+
+            batch_labels[i] = label
+            batch_images[:, 0, :, :, :] = deepcopy(img[:, len_y:2*len_y, len_x:2*len_x])
+            batch_images[:, 1, :, :, :] = deepcopy(patch_list[label])
+
+        output = dict()
+        output['patch_location_img'] = batch_images
+        output['patch_location_label'] = torch.from_numpy(batch_labels.copy())
         return output
 
     def __len__(self):
