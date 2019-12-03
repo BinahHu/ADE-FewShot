@@ -287,7 +287,7 @@ def main(args):
     args.isWarmUp = False
     args.logger = Logger(os.path.join(args.log_dir, args.comment))
     # warm up
-    if args.log == '' and args.start_epoch == 0:
+    if args.log == '' and args.start_epoch == 0 and args.model_weight == '':
         print('Start Warm Up')
         args.isWarmUp = True
         args.warm_up_iters = args.warm_up_epoch * args.train_epoch_iters
@@ -322,7 +322,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--architecture', default='resnet18')
+    parser.add_argument('--architecture', default='resnet10')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
@@ -361,8 +361,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1.0 * 1e-1, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1.0 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=1 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=1 * 1e-1, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
     # warm up

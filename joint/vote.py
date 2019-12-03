@@ -28,7 +28,7 @@ def main(args):
     preds = []
     labels = None
     for model in models:
-        file_path = 'pred/img_test_pred_{}.h5'.format(model)
+        file_path = 'pred/tail_pred_{}_{}.h5'.format(model, args.base_shot)
         f = h5py.File(file_path, 'r')
         preds.append(np.array(f['preds']))
         if labels is None:
@@ -55,8 +55,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--models', default=['seg_10'])
+    parser.add_argument('--models', default=['baseline'])
     parser.add_argument('-weight', default=[1.0, 1.0, 1.0, 1.0])
     parser.add_argument('--mode', default='val')
+    parser.add_argument('--base_shot', default=10, type=int)
     args = parser.parse_args()
     main(args)

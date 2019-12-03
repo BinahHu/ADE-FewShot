@@ -6,9 +6,9 @@ import json
 import math
 
 
-class BinaryMaskPredictor(nn.Module):
+class MaskPredictor(nn.Module):
     def __init__(self, args):
-        super(BinaryMaskPredictor, self).__init__()
+        super(MaskPredictor, self).__init__()
         self.in_dim = args.feat_dim
         self.args = args
         self.down_sampling_rate = args.down_sampling_rate

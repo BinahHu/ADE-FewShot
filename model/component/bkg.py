@@ -42,7 +42,6 @@ class FullMaskPredictor(nn.Module):
 
         feature_map = feature_map.unsqueeze(0)
         predicted_map = self.fc1(feature_map)
-        #redicted_map = F.interpolate(predicted_map, size=(mask.shape[0], mask.shape[1]), mode='nearest')
         mask = mask.unsqueeze(0)
         mask = mask.unsqueeze(0)
         mask = F.interpolate(mask, size=(predicted_map.shape[2], predicted_map.shape[3]), mode='nearest')

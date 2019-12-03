@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
+
 class SceneClassifier(nn.Module):
     def __init__(self, args):
         super(SceneClassifier, self).__init__()
@@ -17,11 +18,6 @@ class SceneClassifier(nn.Module):
         self.fc = nn.Linear(self.pool_size * self.pool_size * self.in_dim, self.scene_num)
         self.loss = nn.CrossEntropyLoss()
         self.mode = 'train'
-
-    def diagnosis(self, agg_data):
-        x = agg_data['features']
-        score = self.fc(x)
-        return score
 
     def forward(self, agg_data):
         """

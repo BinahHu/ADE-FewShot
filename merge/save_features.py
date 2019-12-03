@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='',
                         help="a name for identifying the model")
-    parser.add_argument('--architecture', default='resnet18')
+    parser.add_argument('--architecture', default='resnet10')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)

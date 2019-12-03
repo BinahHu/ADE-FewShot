@@ -49,11 +49,6 @@ class AttrClassifier(nn.Module):
         self.loss = AttrSoftLoss()
         self.mode = 'train'
 
-    def diagnosis(self, agg_data):
-        x = agg_data['features']
-        x = self.classifier(x)
-        return x
-
     def forward(self, agg_data):
         """
         forward pipeline, compute loss function

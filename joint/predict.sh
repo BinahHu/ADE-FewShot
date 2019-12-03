@@ -1,0 +1,1 @@
+srun -p long --gres=gpu:1 --pty python predict.py --id baseline --base_shot 10 --epoch 5

@@ -24,6 +24,12 @@ class NovelClassifier(nn.Module):
         pred = self.fc(feature)
         return self.acc(pred, label)
 
+    def diagnosis(self, x):
+        feature = x['feature']
+        label = x['label'].long()
+        pred = self.fc(feature)
+        return pred, label
+
     def probability(self, x):
         feature = x['feature']
         label = x['label'].long()
@@ -99,6 +105,16 @@ class NovelCosClassifier(nn.Module):
             xx.unsqueeze(1).expand(batch_size, self.num_class, self.in_dim),
             self.weight.unsqueeze(0).expand(batch_size, self.num_class, self.in_dim).cuda(), 2)
         return self.acc(pred, label)
+
+    def diagnosis(self, x):
+        feature = x['feature']
+        label = x['label'].long()
+        xx = feature
+        batch_size = xx.size(0)
+        pred = self.t.cuda() * cosine_similarity(
+            xx.unsqueeze(1).expand(batch_size, self.num_class, self.in_dim),
+            self.weight.unsqueeze(0).expand(batch_size, self.num_class, self.in_dim).cuda(), 2)
+        return pred, label
 
     def forward(self, x):
         if self.mode == 'val':

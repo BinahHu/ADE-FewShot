@@ -9,7 +9,7 @@ class Classifier(nn.Module):
         super(Classifier, self).__init__()
         self.num_class = args.num_base_class
         self.down_sampling_rate = args.down_sampling_rate
-        self.fc = nn.Linear(args.feat_dim * args.crop_width * args.crop_height, self.num_class)
+        self.fc_512 = nn.Linear(args.feat_dim * args.crop_width * args.crop_height, self.num_class)
         self.loss = nn.CrossEntropyLoss(ignore_index=-1)
         self.mode = 'train'
 
@@ -27,22 +27,12 @@ class Classifier(nn.Module):
         del pred
         return acc, category_accuracy
 
-    def diagnosis(self, x):
-        """
-        used only when diagnosis
-        :param x: input
-        :return: prediction
-        """
-        feature, labels = x
-        pred = self.fc(feature)
-        return pred
-
     def forward(self, x):
         if self.mode == 'diagnosis':
             return self.diagnosis(x)
 
         feature, labels = x
-        pred = self.fc(feature)
+        pred = self.fc_512(feature)
         loss = self.loss(pred, labels)
         acc, category_accuracy = self._acc(pred, labels)
 
@@ -80,16 +70,6 @@ class CosClassifier(nn.Module):
                 category_accuracy[0, label_instance] += 1
         del pred
         return acc, category_accuracy
-
-    def diagnosis(self, x):
-        """
-        used only when diagnosis
-        :param x: input
-        :return: prediction
-        """
-        feature, labels = x
-        pred = self.L(feature)
-        return pred
 
     def forward(self, data):
         if self.mode == 'diagnosis':

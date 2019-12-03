@@ -177,14 +177,14 @@ class BaseLearningModule(nn.Module):
                     if supervision is not None:
                         input_agg[key] = feed_dict[key][i]
             # process through each branch
-            # thres = 0.8
-            # gen = random.random()
+            thres = 0.5
+            gen = random.random()
 
             for j, supervision in enumerate(self.args.supervision):
                 loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
-                # if gen >= thres:
-                loss += (loss_branch * supervision['weight'])
-                loss_supervision[j] += loss_branch.item()
+                if gen >= thres:
+                    loss += (loss_branch * supervision['weight'])
+                    loss_supervision[j] += loss_branch.item()
 
         if self.mode == 'val':
             return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum

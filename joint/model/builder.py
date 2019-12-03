@@ -4,7 +4,8 @@ from model.component.classifier import Classifier, CosClassifier
 from model.component.resnet import resnet18, resnet34, resnet10
 from model.component.attr import AttrClassifier
 from model.component.scene import SceneClassifier
-from model.component.seg import MaskPredictor
+from model.component.seg import BinaryMaskPredictor
+from model.component.fgbg import FGBGMaskPredictor
 from model.component.bbox import BBoxModule
 from model.component.bkg import FullMaskPredictor
 from model.component.hierarchy import HierarchyClassifier
@@ -61,7 +62,7 @@ class ModelBuilder:
         return scene_classifier
 
     def build_seg(self):
-        segment_module = MaskPredictor(self.args)
+        segment_module = BinaryMaskPredictor(self.args)
         segment_module.apply(self.weight_init)
         return segment_module
 
@@ -69,6 +70,11 @@ class ModelBuilder:
         background_module = FullMaskPredictor(self.args)
         background_module.apply(self.weight_init)
         return background_module
+
+    def build_fgbg(self):
+        fgbg_module = FGBGMaskPredictor(self.args)
+        fgbg_module.apply(self.weight_init)
+        return fgbg_module
 
     def build_bbox(self):
         bbox_module = BBoxModule(self.args)

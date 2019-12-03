@@ -18,13 +18,6 @@ class HierarchyClassifier(nn.Module):
         self.loss = nn.CrossEntropyLoss()
         self.mode = 'train'
 
-    def diagnosis(self, agg_data):
-        x = agg_data['features']
-        scores = []
-        for fc in self.fcs:
-            scores.append(fc(x))
-        return scores
-
     def forward(self, agg_data):
         """
         forward pipeline, compute loss function
