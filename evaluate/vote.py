@@ -5,22 +5,22 @@ import numpy as np
 import argparse
 import utils
 import torch
-import json
 
 
 def acc(preds, label, range_of_compute):
-    class_num = preds.shape[1]
-    category_acc = np.zeros((2, class_num))
+    category_acc = np.zeros((2, preds.shape[1]))
+    acc_sum = 0
     num = preds.shape[0]
     preds = np.argsort(preds)
     label = label.astype(np.int)
     for i in range(num):
         category_acc[1, label[i]] += 1
         if label[i] in preds[i, -range_of_compute:]:
+            acc_sum += 1
             category_acc[0, label[i]] += 1
-    for i in range(class_num):
-        category_acc[0, i] = float(category_acc[0, i]) / float(category_acc[1, i] + 1e-10)
-    return category_acc[0]
+    acc = np.array(acc_sum / (num + 1e-10))
+    cat_acc = utils.category_acc(torch.tensor(category_acc), 1)
+    return acc, cat_acc
 
 
 def main(args):
@@ -48,20 +48,15 @@ def main(args):
 
     acc_1 = acc(pred_vote, labels, range_of_compute=1)
     acc_5 = acc(pred_vote, labels, range_of_compute=5)
-    num = np.zeros(class_num)
-    for label in labels:
-        num[int(label)] += 1
-    # print(acc_1)
-    # print(acc_5)
-    f = open('acc_analysis/{}.json'.format(args.models[0]), 'w')
-    json.dump([acc_1.tolist(), acc_5.tolist(), num.tolist()], f)
-    f.close()
+
+    print(acc_1)
+    print(acc_5)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--models', default=['attr'])
-    parser.add_argument('-weight', default=[1.0, 1.0, 1.0, 1.0])
+    parser.add_argument('--models', default=['baseline'])
+    parser.add_argument('-weight', default=[1.0])
     parser.add_argument('--mode', default='val')
     args = parser.parse_args()
     main(args)
