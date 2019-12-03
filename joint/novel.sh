@@ -1,1 +1,0 @@
-srun -p short --gres=gpu:4 --pty python novel.py --model seg --base_shot 10 --range_of_compute 5
