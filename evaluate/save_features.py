@@ -16,6 +16,9 @@ from utils import selective_load_weights
 
 
 def save_feature(args):
+    if not os.path.exists('data/'):
+        os.makedirs('data/')
+
     # Network Builders
     builder = ModelBuilder(args)
     feature_extractor = builder.build_backbone()
