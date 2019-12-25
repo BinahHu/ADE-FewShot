@@ -17,3 +17,5 @@ model.log
 train.log
 diagnosis/*.json
 diagnosis/*.pth
+data
+merge
