@@ -19,7 +19,7 @@ This will download and unzip the ADE20k dataset at the **parent directory** of t
 #### step2. Transform and split the dataset
 
 ```
-bash run.sh
+bash split.sh
 ```
 
 This will automatically detect the objects in each image of ADE20k and save their locations and annotations. Then it will split all the dataset into base and novel based on the occurrence of each category.  You can change the threshold of base and novel by modifying the parameter in split\_list.py
