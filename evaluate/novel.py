@@ -220,7 +220,7 @@ if __name__ == '__main__':
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
-    parser.add_argument('--range_of_compute', default=5, type=int)
+    parser.add_argument('--range_of_compute', default=1, type=int)
 
     # Path related arguments
     parser.add_argument('--list_train',
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_init', default='')
 
     # Data related arguments
-    parser.add_argument('--num_novel_class', default=193, type=int,
+    parser.add_argument('--num_novel_class', default=293, type=int,
                         help='number of classes')
     parser.add_argument('--workers', default=8, type=int,
                         help='number of data loading workers')

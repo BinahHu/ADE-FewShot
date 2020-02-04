@@ -111,16 +111,16 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='',
                         help="a name for identifying the model")
-    parser.add_argument('--architecture', default='resnet10')
+    parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
 
     # Path related arguments
     parser.add_argument('--data_train',
-                        default='../data/ADE/ADE_Novel/novel_img_test_train.json')
+                        default='../data/ADE/ADE_Novel/novel_img_train.json')
     parser.add_argument('--data_val',
-                        default='../data/ADE/ADE_Novel/novel_img_test_val.json')
+                        default='../data/ADE/ADE_Novel/novel_img_val.json')
     parser.add_argument('--root_dataset',
                         default='../../')
 
