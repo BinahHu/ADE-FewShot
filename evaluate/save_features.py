@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../')
 import torch
+import json
 from dataset.base_dataset import BaseDataset
 from dataset.dataloader import DataLoader
 from dataset.collate import UserScatteredDataParallel, user_scattered_collate
@@ -22,7 +23,10 @@ def save_feature(args):
     # Network Builders
     builder = ModelBuilder(args)
     feature_extractor = builder.build_backbone()
-    network = BaseLearningModule(args, feature_extractor, classifier=None)
+    distillation_model = None
+    if args.distillation:
+        distillation_model = builder.build_distillation()
+    network = BaseLearningModule(args, feature_extractor, initial_classifier=None, classifier=None, distillation=distillation_model)
     selective_load_weights(network, args.model_weight)
     network = UserScatteredDataParallel(network, device_ids=args.gpus)
     patch_replication_callback(network)
@@ -111,10 +115,12 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='',
                         help="a name for identifying the model")
-    parser.add_argument('--architecture', default='resnet10')
+    parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
+    parser.add_argument('--distillation', action="store_true", help='enable distillation or not')
+    parser.add_argument('--supervision', default='', type=str)
 
     # Path related arguments
     parser.add_argument('--data_train',
@@ -122,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_val',
                         default='../data/ADE/ADE_Novel/novel_img_test_val.json')
     parser.add_argument('--root_dataset',
-                        default='../../')
+                        default='../../../')
 
     # optimization related argument
     parser.add_argument('--gpus', default=[0],
@@ -162,5 +168,11 @@ if __name__ == '__main__':
     parser.add_argument('--max_anchor_per_img', default=100)
 
     args = parser.parse_args()
+
+    if args.supervision != '':
+        args.supervision = json.load(open(args.supervision, 'r'))
+        print(args.supervision)
+    else:
+        args.supervision = []
 
     save_feature(args)

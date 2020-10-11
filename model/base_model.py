@@ -4,7 +4,7 @@ import numpy as np
 from roi_align.roi_align import RoIAlign
 from torch.autograd import Variable
 import random
-
+from .component.resnet import Bottleneck
 
 def to_variable(arr, requires_grad=False, is_cuda=True):
     tensor = torch.from_numpy(arr)
@@ -13,13 +13,26 @@ def to_variable(arr, requires_grad=False, is_cuda=True):
     var = Variable(tensor, requires_grad=requires_grad)
     return var
 
+def build_task_head(in_channels, out_channels):
+    downsample = None
+    if in_channels != out_channels:
+        downsample = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=1,
+                                             stride=1, bias=False), nn.BatchNorm2d(out_channels))
+
+    bottleneck1 = Bottleneck(in_channels, out_channels // 4, downsample=downsample)
+    return bottleneck1
+    #bottleneck2 = Bottleneck(out_channels, out_channels // 4, downsample=None)
+    #return nn.Sequential(bottleneck1, bottleneck2)
 
 class BaseLearningModule(nn.Module):
-    def __init__(self, args, backbone, classifier):
+    def __init__(self, args, backbone, initial_classifier, classifier, distillation):
         super(BaseLearningModule, self).__init__()
         self.args = args
         self.backbone = backbone
+        self.initial_classifier = initial_classifier
         self.classifier = classifier
+        self.distillation = distillation
+        self.enable_distillation = args.distillation
 
         self.crop_height = int(args.crop_height)
         self.crop_width = args.crop_width
@@ -33,9 +46,17 @@ class BaseLearningModule(nn.Module):
             for module in args.module:
                 setattr(self, module['name'], module['module'])
 
+        task_specific_head = {}
+        task_specific_head['classify'] = build_task_head(args.feat_dim, args.feat_dim)
+        for supervision in args.supervision:
+            name = supervision['name']
+            task_specific_head[name] = build_task_head(args.feat_dim, args.feat_dim)
+
+        self.task_specific_head = nn.ModuleDict(task_specific_head)
+
         self.mode = 'train'
-        if self.classifier is not None:
-            self.classifier.mode = self.mode
+        if self.initial_classifier is not None:
+            self.initial_classifier.mode = self.mode
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
         """
@@ -65,6 +86,16 @@ class BaseLearningModule(nn.Module):
 
     def predict(self, feed_dict):
         feature_map = self.backbone(feed_dict['img_data'])
+        feature_map = self.task_specific_head['classify'](feature_map)
+        feature_map_dict = {}
+        feature_map_dict['classify'] = self.task_specific_head['classify'](feature_map)
+        for supervision in self.args.supervision:
+            name = supervision['name']
+            feature_map_dict[name] = self.task_specific_head[name](feature_map)
+
+        if self.enable_distillation:
+            feature_map = self.distillation(feature_map_dict)
+
         batch_img_num = feature_map.shape[0]
         features = None
         labels = None
@@ -93,30 +124,66 @@ class BaseLearningModule(nn.Module):
         elif self.mode == 'diagnosis':
             return self.diagnosis(feed_dict)
 
-        category_accuracy = torch.zeros(2, self.args.num_base_class).cuda()
+
 
         feature_map = self.backbone(feed_dict['img_data'])
-        acc = 0
+        feature_map_dict = {}
+        feature_map_dict['classify'] = self.task_specific_head['classify'](feature_map)
+        for supervision in self.args.supervision:
+            name = supervision['name']
+            feature_map_dict[name] = self.task_specific_head[name](feature_map)
+
+        if self.enable_distillation:
+            feature_map_dict['final'] = self.distillation(feature_map_dict)
+
         loss = 0
         batch_img_num = feature_map.shape[0]
-
         instance_sum = torch.tensor([0]).cuda()
-        loss_classification = torch.zeros(1)
+
+        acc_initial = 0
+        category_accuracy_initial = torch.zeros(2, self.args.num_base_class).cuda()
+        loss_classification_initial = torch.zeros(1)
+
+        acc_final = 0
+        category_accuracy_final = torch.zeros(2, self.args.num_base_class).cuda()
+        loss_classification_final = torch.zeros(1)
+
         loss_supervision = torch.zeros(len(self.args.supervision))
         for i in range(batch_img_num):
             anchor_num = int(feed_dict['anchor_num'][i].detach().cpu())
             if anchor_num == 0 or anchor_num > 100:
                 continue
-            feature = self.process_in_roi_layer(feature_map[i], feed_dict['scales'][i],
+            
+            feature_dict = {}
+            feature_dict['classify'] = self.process_in_roi_layer(feature_map_dict['classify'][i], feed_dict['scales'][i],
                                                 feed_dict['anchors'][i], anchor_num)
-            labels = feed_dict['label'][i, : anchor_num].long()
-            loss_cls, acc_cls, category_acc_img = self.classifier([feature, labels])
-            instance_sum[0] += labels.shape[0]
-            loss += loss_cls * labels.shape[0]
+            for supervision in self.args.supervision:
+                name = supervision['name']
+                feature_dict[name] = self.process_in_roi_layer(feature_map_dict[name][i], feed_dict['scales'][i],
+                                                feed_dict['anchors'][i], anchor_num)
 
-            acc += acc_cls * labels.shape[0]
-            loss_classification += loss_cls.item() * labels.shape[0]
-            category_accuracy += category_acc_img.cuda()
+            if self.enable_distillation:
+                feature_dict['final'] = self.process_in_roi_layer(feature_map_dict['final'][i],
+                                                          feed_dict['scales'][i], feed_dict['anchors'][i], anchor_num)
+            
+            labels = feed_dict['label'][i, : anchor_num].long()
+            loss_cls_initial, acc_cls_initial, category_acc_img_initial = self.initial_classifier([feature_dict['classify'], labels])
+            instance_sum[0] += labels.shape[0]
+            loss += loss_cls_initial * labels.shape[0]
+
+            acc_initial += acc_cls_initial * labels.shape[0]
+            loss_classification_initial += loss_cls_initial.item() * labels.shape[0]
+            category_accuracy_initial += category_acc_img_initial.cuda()
+
+            if self.enable_distillation:
+                loss_cls_final, acc_cls_final, category_acc_img_final = self.classifier(
+                    [feature_dict['final'], labels])
+                loss += loss_cls_final * labels.shape[0]
+                acc_final += acc_cls_final * labels.shape[0]
+                loss_classification_final += loss_cls_final.item() * labels.shape[0]
+                category_accuracy_final += category_acc_img_final.cuda()
+
+
             # do not contain other supervision
             if not hasattr(self.args, 'module'):
                 continue
@@ -125,8 +192,7 @@ class BaseLearningModule(nn.Module):
 
             # form generic data input for all supervision branch
             input_agg = dict()
-            input_agg['features'] = feature
-            input_agg['feature_map'] = feature_map[i]
+
             input_agg['anchors'] = feed_dict['anchors'][i][:anchor_num]
             input_agg['scales'] = feed_dict['scales'][i]
             input_agg['labels'] = feed_dict['label'][i][:anchor_num]
@@ -139,6 +205,9 @@ class BaseLearningModule(nn.Module):
                         input_agg[key] = feed_dict[key][i]
 
             for j, supervision in enumerate(self.args.supervision):
+                name = supervision['name']
+                input_agg['features'] = feature_dict[name]
+                input_agg['feature_map'] = feature_map_dict[name][i]
                 if supervision['type'] != 'self':
                     loss_branch = getattr(self, supervision['name'])(input_agg) * labels.shape[0]
                 elif supervision['name'] == 'patch_location':
@@ -158,12 +227,18 @@ class BaseLearningModule(nn.Module):
                 loss_supervision[j] += loss_branch.item()
 
         if self.mode == 'val':
-            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum
+            return category_accuracy_initial, category_accuracy_final, loss / (instance_sum[0] + 1e-10), \
+                   acc_initial / (instance_sum[0] + 1e-10), acc_final / (instance_sum[0] + 1e-10), instance_sum
         if hasattr(self.args, 'module'):
             loss_supervision = loss_supervision.cuda()
-            loss_classification = loss_classification.cuda()
-            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), instance_sum, \
-                   loss_supervision / (instance_sum[0] + 1e-10), loss_classification / (instance_sum[0] + 1e-10)
+            loss_classification_initial = loss_classification_initial.cuda()
+            loss_classification_final = loss_classification_final.cuda()
+            return category_accuracy_initial, category_accuracy_final, loss / (instance_sum[0] + 1e-10), \
+                   acc_initial / (instance_sum[0] + 1e-10), acc_final / (instance_sum[0] + 1e-10), instance_sum, \
+                   loss_supervision / (instance_sum[0] + 1e-10), \
+                   loss_classification_initial / (instance_sum[0] + 1e-10), \
+                   loss_classification_final / (instance_sum[0] + 1e-10)
         else:
-            return category_accuracy, loss / (instance_sum[0] + 1e-10), acc / (instance_sum[0] + 1e-10), \
-                   instance_sum, None, None
+            return category_accuracy_initial, category_accuracy_final, loss / (instance_sum[0] + 1e-10), \
+                   acc_initial / (instance_sum[0] + 1e-10), acc_final / (instance_sum[0] + 1e-10), \
+                   instance_sum, None, None, None

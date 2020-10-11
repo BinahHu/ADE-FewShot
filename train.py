@@ -32,12 +32,15 @@ def train(module, iterator, optimizers, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     ave_total_loss = AverageMeter()
-    ave_acc = AverageMeter()
+    ave_acc_initial = AverageMeter()
+    ave_acc_final = AverageMeter()
 
-    category_accuracy = torch.zeros(2, args.num_base_class)
+    category_accuracy_initial = torch.zeros(2, args.num_base_class)
+    category_accuracy_final = torch.zeros(2, args.num_base_class)
 
     if len(args.supervision) != 0:
-        ave_loss_cls = AverageMeter()
+        ave_loss_cls_initial = AverageMeter()
+        ave_loss_cls_final = AverageMeter()
         ave_supervision_loss = []
         for supervision in args.supervision:
             ave_supervision_loss.append(AverageMeter())
@@ -55,18 +58,30 @@ def train(module, iterator, optimizers, epoch, args):
         data_time.update(time.time() - tic)
 
         module.zero_grad()
-        category_batch_acc, loss, acc, instances, loss_supervision, loss_cls = module(batch_data)
-        category_batch_acc = category_batch_acc.detach().cpu()
-        for j in range(len(args.gpus)):
-            category_accuracy += category_batch_acc[2*j:2*j+2, :]
+        category_batch_acc_initial, category_batch_acc_final, loss, \
+        acc_initial, acc_final, instances, loss_supervision, loss_cls_initial, loss_cls_final = module(batch_data)
 
-        instances = instances.type_as(acc).detach()
-        acc = acc.detach()
+        category_batch_acc_initial = category_batch_acc_initial.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy_initial += category_batch_acc_initial[2*j:2*j+2, :]
+
+        instances = instances.type_as(acc_initial).detach()
+        acc_initial = acc_initial.detach()
         loss = (loss * instances).sum() / instances.sum().float()
-        acc_actual = (acc * instances).sum() / instances.sum().float()
+        acc_actual_initial = (acc_initial * instances).sum() / instances.sum().float()
+
+        if args.distillation:
+            category_batch_acc_final = category_batch_acc_final.detach().cpu()
+            for j in range(len(args.gpus)):
+                category_accuracy_final += category_batch_acc_final[2 * j:2 * j + 2, :]
+
+            acc_final = acc_final.detach()
+            acc_actual_final = (acc_final * instances).sum() / instances.sum().float()
 
         if loss_supervision is not None:
-            loss_cls = (loss_cls * instances).sum() / instances.sum().float()
+            loss_cls_initial = (loss_cls_initial * instances).sum() / instances.sum().float()
+            if args.distillation:
+                loss_cls_final = (loss_cls_final * instances).sum() / instances.sum().float()
             loss_supervision_agg = []
             for sup, supervision in enumerate(args.supervision):
                 tmp = 0
@@ -81,6 +96,8 @@ def train(module, iterator, optimizers, epoch, args):
         #     break
 
         # Backward
+        for optimizer in optimizers:
+            optimizer.zero_grad()
         loss.backward()
         for optimizer in optimizers:
             optimizer.step()
@@ -92,24 +109,40 @@ def train(module, iterator, optimizers, epoch, args):
         # update average loss and acc
         for k in range(int(instances.sum())):
             ave_total_loss.update(loss.data.item())
-            ave_acc.update(acc_actual * 100)
-            if loss_cls is not None:
-                ave_loss_cls.update(loss_cls.item())
+            ave_acc_initial.update(acc_actual_initial * 100)
+            if loss_cls_initial is not None:
+                ave_loss_cls_initial.update(loss_cls_initial.item())
+                if args.distillation:
+                    ave_loss_cls_final.update(loss_cls_final.item())
                 for j in range(len(args.supervision)):
                     ave_supervision_loss[j].update(loss_supervision_agg[j]["value"].item())
+            if args.distillation:
+                ave_acc_final.update(acc_actual_final * 100)
 
         if i % args.display_iter == 0:
             message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
-                      'lr_feat: {:.6f}, lr_cls: {:.6f}, Accuracy: {:4.2f}, ' \
-                      'Loss: {:.6f}, Acc-Iter: {:4.2f}, '.format(epoch, i, args.train_epoch_iters, batch_time.average(),
+                      'lr_feat: {:.6f}, lr_cls: {:.6f}, Loss: {:.6f}, Accuracy-initial: {:4.2f}, ' \
+                      'Acc-Iter-initial: {:4.2f}, Max Mem alloacted: {:4.2f} M, Max Mem cached: {:4.2f} M '.format(epoch, i, args.train_epoch_iters, batch_time.average(),
                                                                data_time.average(), optimizers[0].param_groups[0]['lr'],
-                                                               optimizers[1].param_groups[0]['lr'], ave_acc.average(),
-                                                               ave_total_loss.average(), acc_actual * 100)
-            info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
-                    'acc-iter-train': acc_actual * 100, 'lr': optimizers[0].param_groups[0]['lr']}
+                                                               optimizers[1].param_groups[0]['lr'], ave_total_loss.average(),
+                                                               ave_acc_initial.average(), acc_actual_initial * 100,
+                                                               torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                                                               torch.cuda.max_memory_cached() / 1024.0 / 1024.0)
+            info = {'loss-train': ave_total_loss.average(), 'acc-train-initial': ave_acc_initial.average().cpu(),
+                    'acc-iter-train-initial': acc_actual_initial.cpu() * 100, 'lr': optimizers[0].param_groups[0]['lr']}
+
+            if args.distillation:
+                message += 'Accuracy-final: {:4.2f}, Acc-Iter-final: {:4.2f} '.format(ave_acc_final.average(), acc_actual_final * 100 )
+                info['acc-train-final'] = ave_acc_final.average().cpu()
+                info['acc-iter-train-final'] = acc_actual_final.cpu() * 100
+
             if loss_supervision is not None:
-                message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
-                info['loss-cls'] = ave_loss_cls.average()
+                message += 'Loss-Cls-Initial: {:.6f}, '.format(ave_loss_cls_initial.average())
+                info['loss-cls-initial'] = ave_loss_cls_initial.average()
+                if args.distillation:
+                    message += 'Loss-Cls-Final: {:.6f}, '.format(ave_loss_cls_final.average())
+                    info['loss-cls-final'] = ave_loss_cls_final.average()
+
                 for j in range(len(args.supervision)):
                     message += 'Loss-{}: {:.6f}, '.format(args.supervision[j]['name'],
                                                           ave_supervision_loss[j].average())
@@ -125,62 +158,110 @@ def train(module, iterator, optimizers, epoch, args):
 
 
         del loss
-        del acc_actual
+        del acc_actual_initial
+        if args.distillation:
+            del acc_actual_final
         del instances
         del batch_data
-    acc = category_acc(category_accuracy, args)
-    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
+        del loss_supervision
+        del loss_cls_initial
+        del loss_cls_final
+        del category_batch_acc_initial
+        del category_batch_acc_final
+
+        # clear cache
+        torch.cuda.empty_cache()
+
+    acc_initial = category_acc(category_accuracy_initial, args)
+    print('Ave Category Acc-Initial: {:4.2f}'.format(acc_initial.item() * 100))
+
+    if args.distillation:
+        acc_final = category_acc(category_accuracy_final, args)
+        print('Ave Category Acc-Final: {:4.2f}'.format(acc_final.item() * 100))
 
 
 def validate(module, iterator, epoch, args):
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    ave_acc = AverageMeter()
+    ave_acc_initial = AverageMeter()
+    ave_acc_final = AverageMeter()
     ave_total_loss = AverageMeter()
 
     module.eval()
     module.module.mode = 'val'
     # main loop
     tic = time.time()
-    category_accuracy = torch.zeros(2, args.num_base_class)
+    category_accuracy_initial = torch.zeros(2, args.num_base_class)
+    category_accuracy_final = torch.zeros(2, args.num_base_class)
+
     for i in range(args.val_epoch_iters):
         batch_data = next(iterator)
         data_time.update(time.time() - tic)
 
-        category_batch_acc, loss, acc, instances = module(batch_data)
-        category_batch_acc = category_batch_acc.detach().cpu()
-        for j in range(len(args.gpus)):
-            category_accuracy += category_batch_acc[2 * j:2 * j + 2, :]
 
-        instances = instances.type_as(acc).detach().cpu()
-        acc = acc.detach().cpu()
-        acc_actual = (acc * instances).sum() / instances.sum().float()
-        loss = (loss.detach().cpu() * instances).sum() / instances.sum().float()
+        category_batch_acc_initial, category_batch_acc_final, loss, \
+        acc_initial, acc_final, instances = module(batch_data)
+
+        category_batch_acc_initial = category_batch_acc_initial.detach().cpu()
+        for j in range(len(args.gpus)):
+            category_accuracy_initial += category_batch_acc_initial[2 * j:2 * j + 2, :]
+
+        instances = instances.type_as(acc_initial).detach()
+        acc_initial = acc_initial.detach()
+        loss = (loss * instances).sum() / instances.sum().float()
+        acc_actual_initial = (acc_initial * instances).sum() / instances.sum().float()
+
+        if args.distillation:
+            category_batch_acc_final = category_batch_acc_final.detach().cpu()
+            for j in range(len(args.gpus)):
+                category_accuracy_final += category_batch_acc_final[2 * j:2 * j + 2, :]
+
+            acc_final = acc_final.detach()
+            acc_actual_final = (acc_final * instances).sum() / instances.sum().float()
+
         # measure elapsed time
         batch_time.update(time.time() - tic)
         tic = time.time()
         # update average loss and acc
         for k in range(int(instances.sum())):
-            ave_acc.update(acc_actual.data.item() * 100)
-            ave_total_loss.update(loss.item())
+            ave_total_loss.update(loss.data.item())
+            ave_acc_initial.update(acc_actual_initial * 100)
+            if args.distillation:
+                ave_acc_final.update(acc_actual_final * 100)
 
         if i % args.display_iter == 0:
-            print('Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, '
-                  'Accuracy: {:4.2f}, Loss: {:.6f}, Acc-Iter: {:4.2f}'
-                  .format(epoch, i, args.val_epoch_iters,
-                          batch_time.average(), data_time.average(),
-                          ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
-            info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(),
-                    'acc-iter-val': acc_actual * 100}
+            message = 'Epoch: [{}][{}/{}], Time: {:.2f}, Data: {:.2f}, ' \
+                      'Loss: {:.6f}, Accuracy-initial: {:4.2f}, ' \
+                      'Acc-Iter-initial: {:4.2f}, Max Mem allocated: {:4.2f} M, Max Mem cached: {:4.2f} M '.format(epoch, i, args.val_epoch_iters, batch_time.average(),
+                                                           data_time.average(), ave_total_loss.average(),
+                                                           ave_acc_initial.average(), acc_actual_initial * 100,
+                                                           torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                                                           torch.cuda.max_memory_cached() / 1024.0 / 1024.0)
+            info = {'loss-val': ave_total_loss.average(), 'acc-val-initial': ave_acc_initial.average().cpu(),
+                    'acc-iter-val-initial': acc_actual_initial.cpu() * 100}
+
+            if args.distillation:
+                message += 'Accuracy-final: {:4.2f}, Acc-Iter-finalfinal: {:4.2f} '.format(ave_acc_final.average(),
+                                                                                      acc_actual_final * 100)
+                info['acc-val-final'] = ave_acc_final.average().cpu()
+                info['acc-iter-val-final'] = acc_actual_final.cpu() * 100
+
+            print(message)
+
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
             for tag, value in info.items():
                 args.logger.scalar_summary(tag, value, i + dispepoch * args.val_epoch_iters)
         del batch_data
-    print('Epoch: [{}], Accuracy: {:4.2f}'.format(epoch, ave_acc.average()))
-    acc = category_acc(category_accuracy, args)
-    print('Ave Category Acc: {:4.2f}'.format(acc.item() * 100))
+    print('Epoch: [{}], Accuracy-Initial: {:4.2f}'.format(epoch, ave_acc_initial.average()))
+    acc_initial = category_acc(category_accuracy_initial, args)
+    print('Ave Category Acc-Initial: {:4.2f}'.format(acc_initial.item() * 100))
+
+    if args.distillation:
+        print('Epoch: [{}], Accuracy-Final: {:4.2f}'.format(epoch, ave_acc_final.average()))
+        acc_final = category_acc(category_accuracy_final, args)
+        print('Ave Category Acc-Final: {:4.2f}'.format(acc_final.item() * 100))
 
 
 def checkpoint(nets, args, epoch_num):
@@ -203,7 +284,7 @@ def warm_up_adjust_lr(optimizers, epoch, iteration, args):
 
 
 def train_adjust_lr(optimizers, epoch, iteration, args):
-    current_ratio = (epoch - args.start_epoch) * args.train_epoch_iters + iteration
+    current_ratio = (epoch - args.initial_epoch) * args.train_epoch_iters + iteration
     current_ratio = float(current_ratio) / float(args.total_iters)
     lr = math.cos(math.pi * current_ratio * 0.5) * args.lr_feat
     for optimizer in optimizers:
@@ -225,7 +306,9 @@ def main(args):
     # Network Builders
     builder = ModelBuilder(args)
     feature_extractor = builder.build_backbone()
+    initial_classifier = builder.build_initial_classifier()
     classifier = builder.build_classifier()
+    distillation = builder.build_distillation()
 
     # supervision
     if len(args.supervision) != 0:
@@ -260,23 +343,34 @@ def main(args):
         math.ceil(dataset_val.num_sample / (args.batch_size_per_gpu * len(args.gpus)))
     print('1 Train Epoch = {} iters'.format(args.train_epoch_iters))
     print('1 Val Epoch = {} iters'.format(args.val_epoch_iters))
-    setattr(args, 'total_iters', args.train_epoch_iters * (args.num_epoch - args.start_epoch))
+    setattr(args, 'total_iters', args.train_epoch_iters * (args.num_epoch - args.initial_epoch))
 
     iterator_train = iter(loader_train)
     iterator_val = iter(loader_val)
 
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(classifier.parameters(),
+    optimizer_initial_cls = torch.optim.SGD(initial_classifier.parameters(),
                                     lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizers = [optimizer_feat, optimizer_initial_cls]
+
+    if classifier != None:
+        optimizer_cls = torch.optim.SGD(classifier.parameters(),
+                                        lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+        optimizers.append(optimizer_cls)
+    if distillation != None:
+        optimizer_distillation = torch.optim.SGD(distillation.parameters(),
+                                                 lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+        optimizers.append(optimizer_distillation)
+
     # supervision optimizers
     for i, supervision in enumerate(args.supervision):
         optimizers.append(torch.optim.SGD(
             supervision_modules[i]['module'].parameters(),
             lr=supervision['lr'], momentum=0.5, weight_decay=args.weight_decay))
 
-    network = BaseLearningModule(args, backbone=feature_extractor, classifier=classifier)
+    network = BaseLearningModule(args, backbone=feature_extractor, initial_classifier=initial_classifier,
+                                 classifier=classifier, distillation=distillation)
     if args.model_weight != '':
         selective_load_weights(network, args.model_weight)
     # set_fixed_weights(network)
@@ -301,9 +395,19 @@ def main(args):
     # train for real
     optimizer_feat = torch.optim.SGD(feature_extractor.parameters(),
                                      lr=args.lr_feat, momentum=0.5, weight_decay=args.weight_decay)
-    optimizer_cls = torch.optim.SGD(classifier.parameters(),
+    optimizer_initial_cls = torch.optim.SGD(initial_classifier.parameters(),
                                     lr=args.lr_cls, momentum=0.5, weight_decay=args.weight_decay)
-    optimizers = [optimizer_feat, optimizer_cls]
+    optimizers = [optimizer_feat, optimizer_initial_cls]
+
+    if classifier != None:
+        optimizer_cls = torch.optim.SGD(classifier.parameters(),
+                                        lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+        optimizers.append(optimizer_cls)
+    if distillation != None:
+        optimizer_distillation = torch.optim.SGD(distillation.parameters(),
+                                                 lr=2.0 * 1e-4, momentum=0.5, weight_decay=args.weight_decay)
+        optimizers.append(optimizer_distillation)
+
     # supervision optimizers
     for i, supervision in enumerate(args.supervision):
         optimizers.append(torch.optim.SGD(
@@ -322,7 +426,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--architecture', default='resnet10')
+    parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512, type=int)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
@@ -333,6 +437,7 @@ if __name__ == '__main__':
     parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
     parser.add_argument('--cls', default="Linear", type=str, help='classifier type')
+    parser.add_argument('--distillation', action="store_true", help='enable distillation or not')
 
     # data loading arguments
     parser.add_argument('--supervision', default='supervision.json', type=str)
@@ -340,7 +445,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
-    parser.add_argument('--root_dataset', default='../')
+    parser.add_argument('--root_dataset', default='../../')
     parser.add_argument('--drop_point', default=[3, 4], type=list)
 
     parser.add_argument('--max_anchor_per_img', default=100)
@@ -357,12 +462,17 @@ if __name__ == '__main__':
     parser.add_argument('--num_epoch', default=12, type=int, help='epochs to train for')
     parser.add_argument('--start_epoch', default=0, type=int,
                         help='epoch to start training. useful if continue from a checkpoint')
+    parser.add_argument('--initial_epoch', default=1, type=int,
+                        help='epoch to start training initially. useful if continue from a checkpoint')
     parser.add_argument('--train_epoch_iters', default=20, type=int,
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
     parser.add_argument('--lr_feat', default=1 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_init_cls', default=1 * 1e-1, type=float, help='LR')
     parser.add_argument('--lr_cls', default=1 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_dist', default=1 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_all', default=0, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
     # warm up
@@ -389,5 +499,11 @@ if __name__ == '__main__':
 
     if args.log != '':
         args.model_weight = args.ckpt + 'net_epoch_' + args.log + '.pth'
+
+    if args.lr_all != 0:
+        args.lr_feat = args.lr_all
+        args.lr_init_cls = args.lr_all
+        args.lr_cls = args.lr_all
+        args.lr_dist = args.lr_all
 
     main(args)

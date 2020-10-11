@@ -11,6 +11,7 @@ from model.component.hierarchy import HierarchyClassifier
 from model.component.part import PartClassifier
 from model.component.patch_location import PatchLocationClassifier
 from model.component.rotation import RotationClassifier
+from model.component.distillation import Distillation
 
 
 class ModelBuilder:
@@ -40,6 +41,23 @@ class ModelBuilder:
         return backbone
 
     def build_classifier(self):
+        if not self.args.distillation:
+            return None
+        if self.args.cls == 'Linear':
+            classifier = Classifier(self.args)
+        elif self.args.cls == 'Cos':
+            classifier = CosClassifier(self.args)
+        classifier.apply(self.weight_init)
+        return classifier
+
+    def build_distillation(self):
+        if not self.args.distillation:
+            return None
+        distillation = Distillation(self.args)
+        distillation.apply(self.weight_init)
+        return distillation
+
+    def build_initial_classifier(self):
         if self.args.cls == 'Linear':
             classifier = Classifier(self.args)
         elif self.args.cls == 'Cos':

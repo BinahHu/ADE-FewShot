@@ -19,3 +19,4 @@ diagnosis/*.json
 diagnosis/*.pth
 data
 merge
+model/component/roi_align
