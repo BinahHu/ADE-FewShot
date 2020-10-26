@@ -25,6 +25,8 @@ def acc(preds, label, range_of_compute):
 
 def main(args):
     models = args.models
+    if isinstance(models, str):
+        models = [models]
     preds = []
     labels = None
     for model in models:

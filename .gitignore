@@ -8,6 +8,7 @@ ckpt*/
 */*.swp
 log*/
 model/prtrain/
+model/component/roi_align/
 run.sh
 test.sh
 val.sh

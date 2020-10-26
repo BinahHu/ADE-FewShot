@@ -105,8 +105,8 @@ def train(module, iterator, optimizers, epoch, args):
                                                                data_time.average(), optimizers[0].param_groups[0]['lr'],
                                                                optimizers[1].param_groups[0]['lr'], ave_acc.average(),
                                                                ave_total_loss.average(), acc_actual * 100)
-            info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average(),
-                    'acc-iter-train': acc_actual * 100, 'lr': optimizers[0].param_groups[0]['lr']}
+            info = {'loss-train': ave_total_loss.average(), 'acc-train': ave_acc.average().cpu(),
+                    'acc-iter-train': acc_actual.cpu() * 100, 'lr': optimizers[0].param_groups[0]['lr']}
             if loss_supervision is not None:
                 message += 'Loss-Cls: {:.6f}, '.format(ave_loss_cls.average())
                 info['loss-cls'] = ave_loss_cls.average()
@@ -171,7 +171,7 @@ def validate(module, iterator, epoch, args):
                           batch_time.average(), data_time.average(),
                           ave_acc.average(), ave_total_loss.average(), acc_actual * 100))
             info = {'loss_val': ave_total_loss.average(), 'acc-val': ave_acc.average(),
-                    'acc-iter-val': acc_actual * 100}
+                    'acc-iter-val': acc_actual.cpu() * 100}
             dispepoch = epoch
             if not args.isWarmUp:
                 dispepoch += 1
@@ -322,7 +322,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # Model related arguments
-    parser.add_argument('--architecture', default='resnet10')
+    parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512, type=int)
     parser.add_argument('--crop_height', default=3, type=int)
     parser.add_argument('--crop_width', default=3, type=int)
@@ -340,7 +340,7 @@ if __name__ == '__main__':
                         default='./data/ADE/ADE_Base/base_img_train.json')
     parser.add_argument('--list_val',
                         default='./data/ADE/ADE_Base/base_img_val.json')
-    parser.add_argument('--root_dataset', default='../')
+    parser.add_argument('--root_dataset', default='../../')
     parser.add_argument('--drop_point', default=[3, 4], type=list)
 
     parser.add_argument('--max_anchor_per_img', default=100)
@@ -361,8 +361,8 @@ if __name__ == '__main__':
                         help='iterations of each epoch (irrelevant to batch size)')
     parser.add_argument('--val_epoch_iters', default=20, type=int)
     parser.add_argument('--optim', default='SGD', help='optimizer')
-    parser.add_argument('--lr_feat', default=1 * 1e-1, type=float, help='LR')
-    parser.add_argument('--lr_cls', default=1 * 1e-1, type=float, help='LR')
+    parser.add_argument('--lr_feat', default=5 * 1e-2, type=float, help='LR')
+    parser.add_argument('--lr_cls', default=5 * 1e-2, type=float, help='LR')
     parser.add_argument('--weight_decay', type=float, default=0.0001)
 
     # warm up
