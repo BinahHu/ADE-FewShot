@@ -75,7 +75,7 @@ def save_feature(args):
         iterations += 1
     features = features[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('data/img_test_train_feat_{}.h5'.format(args.id), 'w')
+    f = h5py.File('data/{}_train_{}.h5'.format(args.note, args.id), 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -98,7 +98,7 @@ def save_feature(args):
 
     features = features[:flag, :]
     labels = labels[:flag]
-    f = h5py.File('data/img_test_val_feat_{}.h5'.format(args.id), 'w')
+    f = h5py.File('data/{}_val_{}.h5'.format(args.note, args.id), 'w')
     f.create_dataset('feature_map', data=features)
     f.create_dataset('labels', data=labels)
     f.close()
@@ -111,6 +111,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='',
                         help="a name for identifying the model")
+    parser.add_argument('--note', default='test',
+                        help="dataset type")
     parser.add_argument('--architecture', default='resnet18')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
@@ -118,9 +120,9 @@ if __name__ == '__main__':
 
     # Path related arguments
     parser.add_argument('--data_train',
-                        default='../data/ADE/ADE_Novel/novel_img_test_train.json')
+                        default='../data/ADE/ADE_Novel/novel_img{}_train.json')
     parser.add_argument('--data_val',
-                        default='../data/ADE/ADE_Novel/novel_img_test_val.json')
+                        default='../data/ADE/ADE_Novel/novel_img{}_val.json')
     parser.add_argument('--root_dataset',
                         default='../../../')
 
@@ -162,5 +164,11 @@ if __name__ == '__main__':
     parser.add_argument('--max_anchor_per_img', default=100)
 
     args = parser.parse_args()
+
+    fix = ""
+    if args.note == 'test':
+        fix = "_test"
+    args.data_train = args.data_train.format(fix)
+    args.data_val = args.data_val.format(fix)
 
     save_feature(args)

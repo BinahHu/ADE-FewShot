@@ -63,5 +63,14 @@ class AttrClassifier(nn.Module):
         x = self.classifier(x)
         # x = self.sigmoid(x)
         attributes = attributes[:x.shape[0]].long()
-        loss = self.loss([x, attributes])
+
+        loss = torch.tensor(0).float().cuda()
+        cnt = 0
+        for i in range(x.shape[0]):
+            if sum(attributes[i]) == 0:
+                continue
+            loss += self.loss([x[i].unsqueeze(0), attributes[i].unsqueeze(0)])
+            cnt += 1
+        if cnt != 0:
+            loss /= cnt
         return loss

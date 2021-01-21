@@ -206,6 +206,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
+    parser.add_argument('--note', default='test',
+                        help="dataset type")
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
     parser.add_argument('--crop_height', default=3, type=int)
@@ -241,7 +243,7 @@ if __name__ == '__main__':
                         help='frequency to display')
 
     args = parser.parse_args()
-    args.list_val = 'data/img_test_val_feat_{}.h5'.format(args.id)
+    args.list_val = 'data/{}_val_{}.h5'.format(args.note, args.id)
     args.model_weight = 'ckpt/net_epoch_{}.pth'.format(args.epoch)
 
     main(args)

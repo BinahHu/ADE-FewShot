@@ -215,6 +215,8 @@ if __name__ == '__main__':
     # Model related arguments
     parser.add_argument('--id', default='baseline',
                         help="a name for identifying the model")
+    parser.add_argument('--note', default='test',
+                        help="dataset type")
     parser.add_argument('--arch', default='resnet18')
     parser.add_argument('--cls', default='novel_cls')
     parser.add_argument('--feat_dim', default=512)
@@ -273,7 +275,7 @@ if __name__ == '__main__':
                         help='add comment to this test')
 
     args = parser.parse_args()
-    args.list_train = 'data/img_test_train_feat_{}.h5'.format(args.id)
-    args.list_val = 'data/img_test_val_feat_{}.h5'.format(args.id)
+    args.list_train = 'data/{}_train_{}.h5'.format(args.note, args.id)
+    args.list_val = 'data/{}_val_{}.h5'.format(args.note, args.id)
 
     main(args)

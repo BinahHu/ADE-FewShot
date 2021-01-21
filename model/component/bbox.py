@@ -114,7 +114,17 @@ class BBoxModule(nn.Module):
         target_value = torch.tensor(target_value).float().cuda()
 
         pred_value = self.regress(features)
-        loss = F.smooth_l1_loss(pred_value, target_value)
+
+        loss = torch.tensor(0).float().cuda()
+        cnt = 0
+
+        for i in range(pred_value.shape[0]):
+            if tgt_anchors[i][0] == -1:
+                continue
+            loss += F.smooth_l1_loss(pred_value[i].unsqueeze(0), target_value[i].unsqueeze(0))
+            cnt += 1
+        if cnt != 0:
+            loss /= cnt
         return loss
 
 

@@ -20,3 +20,5 @@ diagnosis/*.json
 diagnosis/*.pth
 data
 merge
+protonet
+protoMAML

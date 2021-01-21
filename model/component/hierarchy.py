@@ -3,7 +3,6 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 
-
 class HierarchyClassifier(nn.Module):
     def __init__(self, args):
         super(HierarchyClassifier, self).__init__()
@@ -37,7 +36,18 @@ class HierarchyClassifier(nn.Module):
             fc = self.fcs[i]
             label = hierarchy[:, i]
             score = fc(x)
-            losses.append(self.loss(score, label))
+
+            loss_layer = torch.tensor(0).float().cuda()
+            cnt = 0
+            for j in range(x.shape[0]):
+                if label[j] == -1:
+                    continue
+                loss_layer += self.loss(score[j].unsqueeze(0), label[j].unsqueeze(0))
+                cnt += 1
+            if cnt != 0:
+                loss_layer /= cnt
+
+            losses.append(loss_layer)
         for loss in losses:
             loss_sum += loss
         return loss_sum

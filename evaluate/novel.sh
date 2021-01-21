@@ -1,1 +1,1 @@
-srun -p short -w espresso-0-22 --gres=gpu:4 --pty python novel.py --id baseline_halfclass
+srun -p short -w espresso-0-22 --gres=gpu:4 --pty python novel.py --id seg_attr_exsmall

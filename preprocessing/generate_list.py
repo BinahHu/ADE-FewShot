@@ -90,7 +90,9 @@ def base_generation(args):
         length = len(all_list[i])
         if length == 0:
             continue
-        for j in range(0, math.ceil(5 * length / 6)):
+        thd = math.ceil(5 * length / 6)
+        #thd = 1
+        for j in range(0, thd):
             img_index = all_list[i][j]['img']
             anchor = dict()
             anchor['anchor'] = all_list[i][j]['box']
@@ -101,9 +103,17 @@ def base_generation(args):
                     anchor[supervision['name']] = all_list[i][j][supervision['name']]
             sample_list_train[img_index]['anchors'].append(anchor)
 
-        for j in range(math.ceil(5 * length / 6), length):
+        for j in range(thd, length):
             img_index = all_list[i][j]['img']
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
+
+    if args.drop_novel:
+        drop_list = json.load(open(os.path.join(origin_path, 'img_has_novel.json')))
+        sample_list_train_final = []
+        for i in range(len(sample_list_train)):
+            if drop_list[i] == 0:
+                sample_list_train_final.append(sample_list_train[i])
+        sample_list_train = sample_list_train_final
 
     output_path = os.path.join(args.root_dataset, args.output)
     output_train = os.path.join(output_path, 'base_img_train.json')
@@ -121,7 +131,7 @@ def novel_generation(args):
     novel_set_path = os.path.join(origin_path, 'novel_set.json')
     img_path_path = os.path.join(origin_path, 'img_path.json')
     img_path2size_path = os.path.join(origin_path, 'img_path2size.json')
-    novel_list_path = os.path.join(origin_path, 'novel_val_list.json')
+    novel_list_path = os.path.join(origin_path, 'novel_test_list.json')
     f = open(novel_set_path, 'r')
     novel_set = json.load(f)
     f.close()
@@ -186,11 +196,11 @@ def novel_generation(args):
             sample_list_val[img_index]['anchors'].append({'anchor': all_list[i][j]['box'], 'label': i})
 
     output_path = os.path.join(args.root_dataset, args.output)
-    output_train = os.path.join(output_path, 'novel_img_train.json')
+    output_train = os.path.join(output_path, 'novel_img_test_train.json')
     f = open(output_train, 'w')
     json.dump(sample_list_train, f)
     f.close()
-    output_val = os.path.join(output_path, 'novel_img_val.json')
+    output_val = os.path.join(output_path, 'novel_img_test_val.json')
     f = open(output_val, 'w')
     json.dump(sample_list_val, f)
     f.close()
@@ -202,11 +212,12 @@ if __name__ == '__main__':
     parser.add_argument('-origin_dataset', default='ADE_Origin/', help='origin dir')
     parser.add_argument('--supervision_dataset', default='ADE_Supervision/', help='supervision information')
     parser.add_argument('-part', default='Base', help='Base or Novel')
-    parser.add_argument('-shot', default=5, help='shot in Novel')
+    parser.add_argument('-shot', default=1, type=int, help='shot in Novel')
     parser.add_argument('-img_size', default='img_path2size.json', help='img size file')
     parser.add_argument('--supervision_src', default=json.load(open('./supervision.json', 'r')), type=list)
     parser.add_argument('-context', type=bool, default=True)
     parser.add_argument('-ratio', type=float, default=2.7)
+    parser.add_argument('-drop_novel', type=bool, default=False)
     # example [{'type': 'img', 'name': 'seg', 'path': '1.json'},
     # {'type': 'inst', 'name': 'attr', 'path': 'attr.json'}]
 
