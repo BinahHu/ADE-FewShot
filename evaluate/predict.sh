@@ -1,1 +1,1 @@
-srun -p short -w espresso-0-22 --gres=gpu:4 --pty python predict.py --id seg_attr_exsmall --epoch 72
+srun -p long -w espresso-0-24 --gres=gpu:4 --pty python predict.py --id rotation_pretrain_seg_attr --epoch 89
