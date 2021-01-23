@@ -1,1 +1,1 @@
-srun -p long -w espresso-0-24 --gres=gpu:4 --pty python novel.py --id rotation_pretrain_seg_attr
+srun -p long -w espresso-0-24 --gres=gpu:4 --pty python novel.py --id seg_attr_drop
