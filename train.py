@@ -333,6 +333,7 @@ if __name__ == '__main__':
     parser.add_argument('--padding_constant', default=8, type=int, help='max down sampling rate of the network')
     parser.add_argument('--down_sampling_rate', default=8, type=int, help='down sampling rate')
     parser.add_argument('--cls', default="Linear", type=str, help='classifier type')
+    parser.add_argument('--mtl', action='store_true', default=False)
 
     # data loading arguments
     parser.add_argument('--supervision', default='supervision.json', type=str)

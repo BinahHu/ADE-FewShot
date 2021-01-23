@@ -36,6 +36,13 @@ class BaseLearningModule(nn.Module):
         self.mode = 'train'
         if self.classifier is not None:
             self.classifier.mode = self.mode
+        
+        # mtl
+        self.mtl = False
+        if self.args.mtl:
+            self.mtl = True
+            branch_num = len(self.args.supervision) + 1
+            self.log_vars = torch.nn.Parameter(torch.zeros(branch_num), requires_grad=True)
 
     def process_in_roi_layer(self, feature_map, scale, anchors, anchor_num):
         """
@@ -154,6 +161,8 @@ class BaseLearningModule(nn.Module):
                     input_label = feed_dict['rotation_label']
                     rotation_feature_map = self.backbone(input_img)
                     loss_branch = getattr(self, 'rotation')([rotation_feature_map, input_label])
+                if self.mtl:
+                    loss_branch = loss_branch * torch.exp(-self.log_vars[j]) + self.log_vars[j]
                 loss += (loss_branch * supervision['weight'])
                 loss_supervision[j] += loss_branch.item()
 
